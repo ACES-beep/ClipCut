@@ -1907,7 +1907,13 @@ function jobHtml(j) {
         ${j.clips.some(c => c.status === "done") ? `<button class="btn sm icon ghost" data-act="dlall" data-j="${j.id}" title="Download all clips of this video" aria-label="Download all clips of this video">${ic("down")}</button>` : ""}
         <button class="btn sm icon ghost" data-act="deljob" data-j="${j.id}" title="Delete" aria-label="Delete this video and its clips">${ic("trash")}</button>
         <label class="selck" title="Select this video and its clips"><input type="checkbox" data-sel="j:${j.id}" ${sel().has("j:" + j.id) ? "checked" : ""} aria-label="Select this video"></label>`}</div></div>
-    ${busy ? `<div class="bar"><i style="width:${Math.round(j.progress * 100)}%"></i></div><p class="sub">${esc(j.stage)} · ${Math.round(j.progress * 100)}%</p>` : ""}
+    ${busy ? `<div style="display:flex;align-items:center;gap:12px;margin:8px 0 4px">
+        <div class="bar" style="flex:1;margin:0"><i style="width:${Math.round(j.progress * 100)}%"></i></div>
+        <button type="button" class="btn sm danger" data-act="canceljob" data-j="${j.id}" title="Cancel processing this video" style="height:26px;padding:0 10px;font-size:11.5px;gap:4px;flex-shrink:0;background:rgba(255,68,68,0.12);color:#ff5555;border:1px solid rgba(255,68,68,0.3)">
+          ${ic("x")}Cancel
+        </button>
+      </div>
+      <p class="sub" style="margin-top:2px">${esc(j.stage)} · ${Math.round(j.progress * 100)}%</p>` : ""}
     ${j.status === "done" && !j.clips.length ? `<p class="sub">${esc(j.stage)}</p>` : ""}
     ${j.error ? `<div class="err">${esc(j.error)}<button class="rep" data-act="report" data-ctx="${esc("Video failed: " + (j.title || j.source.name || "") + " | " + j.error)}">Report this</button></div>` : ""}${j.ai?.note ? `<p class="sub">${esc(j.ai.note)}</p>` : ""}
     ${j.clips.length ? `<div class="grid">${j.clips.map(c => clipHtml(j, c)).join("")}</div>` : ""}`;
@@ -2799,6 +2805,20 @@ document.addEventListener("click", async e => {
       if (!typed) return;
       await send("/api/account/delete", {confirm: typed});
       location.href = "/"; return;
+    }
+    if (a === "canceljob") {
+      if (!await ask("Cancel processing this video?", "Clipping will be stopped.", "Cancel video", true)) return;
+      b.disabled = true;
+      try {
+        await api(`/api/jobs/${d.j}/cancel`, {method: "POST"});
+        const j = jobOf(d.j);
+        if (j) { j.status = "error"; j.stage = "Cancelled by you"; }
+        toast("Video cancelled");
+        await tick();
+      } catch (e) {
+        toast(e.message, "bad");
+      }
+      return;
     }
     if (a === "deljob") {
       if (!await ask("Delete this video?", "The video and all of its clips are permanently deleted. This cannot be undone.", "Delete", true)) return;

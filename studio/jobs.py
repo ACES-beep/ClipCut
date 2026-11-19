@@ -187,10 +187,34 @@ def save(job):
         tmp.replace(d / "job.json")
 
 
+class JobCancelled(Exception):
+    pass
+
+
 def _set(job, **kw):
+    if job.get("cancelled"):
+        raise JobCancelled("Cancelled by you.")
     with _lock:
         job.update(kw)
     save(job)
+
+
+def cancel(jid: str) -> bool:
+    with _lock:
+        job = _jobs.get(jid)
+        if not job:
+            return False
+        job["cancelled"] = True
+        job["status"] = "error"
+        job["error"] = "Cancelled by you."
+        job["stage"] = "Cancelled"
+        for c in job.get("clips", []):
+            if c.get("status") in ("queued", "rendering"):
+                c["status"] = "error"
+                c["error"] = "Cancelled."
+    save(job)
+    ctx.bump(job["user"])
+    return True
 
 
 def _remap(path, folder: Path):
@@ -834,6 +858,16 @@ def _worker(quick_only=False):
                 if clip.get("captions", True):
                     words = json.loads((Path(job["dir"]) / "words.json").read_text(encoding="utf-8"))
                 render_one(job, clip, words)
+        except JobCancelled:
+            if kind == "job":
+                for c in job["clips"]:
+                    if c.get("status") in ("queued", "rendering"):
+                        c.update(status="error", error="Cancelled by you.")
+                with _lock:
+                    job.update(status="error", error="Cancelled by you.", stage="Cancelled")
+                save(job)
+                ctx.bump(job["user"])
+                creators.log(job["creator"], f"Video cancelled: {job.get('title') or job['id']}")
         except Exception as e:  # noqa: BLE001
             (Path(job["dir"]) / "error.log").write_text(traceback.format_exc(), encoding="utf-8")
             if kind == "job":

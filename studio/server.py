@@ -989,11 +989,20 @@ def detect_facecam_route(jid: str):
     return {"ok": False, "message": "No facecam detected"}
 
 
+@app.post("/api/jobs/{jid}/cancel")
+def cancel_job_route(jid: str):
+    _job_or_404(jid)
+    jobs.cancel(jid)
+    return {"ok": True}
+
+
 @app.delete("/api/jobs/{jid}")
 def delete_job(jid: str):
     job = _job_or_404(jid)
-    if job["status"] in ("queued", "running", "live") or jid in live.SESSIONS:
-        raise HTTPException(409, "This is still being worked on. Stop it or wait for it to finish first.")
+    if jid in live.SESSIONS:
+        raise HTTPException(409, "This stream is currently live recording. Stop it first.")
+    if job["status"] in ("queued", "running"):
+        jobs.cancel(jid)
     jobs.delete(jid)
     return {"ok": True}
 
