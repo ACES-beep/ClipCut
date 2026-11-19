@@ -2360,6 +2360,23 @@ function parseYouTubeId(u) {
   return m ? m[1] : null;
 }
 
+function parseTimeParam(u) {
+  if (!u) return 0;
+  const m = String(u).match(/[?&]t=([0-9hms]+)/i);
+  if (!m) return 0;
+  const str = m[1];
+  if (/^\d+$/.test(str)) return parseInt(str, 10);
+  if (/^\d+s$/.test(str)) return parseInt(str, 10);
+  let total = 0;
+  const h = str.match(/(\d+)h/i);
+  const min = str.match(/(\d+)m/i);
+  const s = str.match(/(\d+)s/i);
+  if (h) total += parseInt(h[1], 10) * 3600;
+  if (min) total += parseInt(min[1], 10) * 60;
+  if (s) total += parseInt(s[1], 10);
+  return total || 0;
+}
+
 function parseTwitchInfo(u) {
   if (!u) return null;
   const s = String(u).trim();
@@ -2545,6 +2562,11 @@ async function loadStudioUrl(u) {
   if (!u) return toast("Please enter a video URL", "bad");
   D.linked_url = u;
   window._lastLinkedUrl = u;
+  const tStart = parseTimeParam(u);
+  if (tStart > 0 && D.custom_clip) {
+    D.custom_clip.start = tStart;
+    D.custom_clip.end = tStart + 30;
+  }
   if ($("#url") && !$("#url").value.trim()) {
     $("#url").value = u;
     if (typeof onLink === "function") onLink($("#url"));
@@ -2556,7 +2578,7 @@ async function loadStudioUrl(u) {
       D.linked_info = info;
       window._lastLinkedInfo = info;
       if (info.duration && D.custom_clip) {
-        D.custom_clip.end = Math.min(info.duration, Math.max((D.custom_clip.start || 0) + 5, 30));
+        D.custom_clip.end = Math.min(info.duration, Math.max((D.custom_clip.start || 0) + 5, (D.custom_clip.start || 0) + 30));
       }
     }
   } catch {}
@@ -2582,10 +2604,13 @@ function openSourceEditor() {
   }
 
   const fromMin = Number($("#o_from")?.value) || 0;
-  const toMin = Number($("#o_to")?.value) || (fromMin + 0.5);
+  const urlStartTime = parseTimeParam(first.url);
+  const initialStart = fromMin > 0 ? Math.round(fromMin * 60 * 10) / 10 : (urlStartTime > 0 ? urlStartTime : 0);
+  const toMin = Number($("#o_to")?.value) || 0;
+  const initialEnd = toMin > 0 ? Math.round(toMin * 60 * 10) / 10 : (initialStart + 30);
   D.custom_clip = {
-    start: Math.round(fromMin * 60 * 10) / 10,
-    end: Math.round(toMin * 60 * 10) / 10,
+    start: initialStart,
+    end: initialEnd,
     hook: "VIRAL MOMENT 🔥",
     captions: true,
     style: "bounce",
@@ -3342,8 +3367,8 @@ function drawClipDlg(full) {
           initTimelineScrubber(j, c);
           const dur = playerInstance.getDuration ? playerInstance.getDuration() : 0;
           if (dur && dur > 0) {
-            if (!c.end || c.end > dur || c.end === 30) {
-              c.end = Math.min(dur, Math.max((c.start || 0) + 5, 30));
+            if (!c.end || c.end > dur || c.end <= (c.start || 0)) {
+              c.end = Math.min(dur, Math.max((c.start || 0) + 5, (c.start || 0) + 30));
             }
             const td = $("#txt_dur_time");
             if (td) td.textContent = fmtTime(dur);
@@ -3359,8 +3384,8 @@ function drawClipDlg(full) {
           initTimelineScrubber(j, c);
           const dur = playerInstance.getDuration ? playerInstance.getDuration() : 0;
           if (dur && dur > 0) {
-            if (!c.end || c.end > dur || c.end === 30) {
-              c.end = Math.min(dur, Math.max((c.start || 0) + 5, 30));
+            if (!c.end || c.end > dur || c.end <= (c.start || 0)) {
+              c.end = Math.min(dur, Math.max((c.start || 0) + 5, (c.start || 0) + 30));
             }
             const td = $("#txt_dur_time");
             if (td) td.textContent = fmtTime(dur);
