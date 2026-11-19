@@ -78,8 +78,11 @@ def install_fonts():
             shutil.copyfile(f, config.FONTS_DIR / f.name)
 
 
-LAYOUTS = {"blur": "Full frame + blurred fill", "zoom": "Zoomed in + blurred fill", "crop": "Fill the screen (centre crop)",
-           "gameplay": "Gameplay fills the screen, facecam in the corner"}
+LAYOUTS = {"gameplay": "Gameplay + Floating Facecam (Adjustable)",
+           "split": "Split screen: Facecam on top, Gameplay on bottom",
+           "crop": "Fill the screen (centre crop)",
+           "blur": "Full frame + blurred fill",
+           "zoom": "Zoomed in + blurred fill"}
 
 
 def _ts(t):
@@ -111,12 +114,14 @@ def _groups(words, per):
 
 def geometry(src_w, src_h, layout):
     """Where the video sits in the 1080x1920 frame, and where hook and captions go."""
-    if src_h >= src_w and layout != "crop":
+    if src_h >= src_w and layout not in ("crop", "gameplay", "split"):
         layout = "crop"  # already vertical or square: nothing to gain from a blurred fill
     if layout == "blur":
         fg_h = min(H, int(round(W * src_h / src_w / 2)) * 2)
     elif layout == "zoom":
         fg_h = 1000
+    elif layout == "split":
+        return layout, H, 756, 1480
     else:
         fg_h = H
     top = (H - fg_h) // 2
@@ -228,23 +233,92 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     return head + "\n".join(ev) + "\n"
 
 
-PIP_W = 380            # how wide the facecam is in the 1080-wide frame
+PIP_W = 760            # default width for facecam card in the 1080-wide vertical frame
 PIP_MARGIN = 26
 
 
-def _filter(layout, fg_h, facecam=None):
-    if layout == "gameplay" and facecam:
-        # The game fills the screen, and the webcam sits in the top corner of it, so a viewer sees
-        # the play and the face at the same time.
-        fx, fy, fw, fh = (int(v) for v in facecam)
-        if fw > 8 and fh > 8:
-            pip_h = max(2, int(round(PIP_W * fh / fw)))
-            return (f"[0:v]fps={config.OUT_FPS},split=2[base][fc];"
-                    f"[base]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1[b];"
-                    f"[fc]crop={fw}:{fh}:{fx}:{fy},scale={PIP_W}:{pip_h},setsar=1[p];"
-                    f"[b][p]overlay={W - PIP_W - PIP_MARGIN}:{PIP_MARGIN}[v0];")
-    if layout == "crop" or (layout == "gameplay" and not facecam):
+def _norm_box(box, src_w=1920, src_h=1080):
+    if not box or len(box) != 4:
+        return None
+    try:
+        x, y, w, h = [int(round(float(v))) for v in box]
+        if w <= 8 or h <= 8:
+            return None
+        x = max(0, min(src_w - 10, x))
+        y = max(0, min(src_h - 10, y))
+        w = max(10, min(src_w - x, w))
+        h = max(10, min(src_h - y, h))
+        return (x // 2) * 2, (y // 2) * 2, (w // 2) * 2, (h // 2) * 2
+    except (ValueError, TypeError):
+        return None
+
+
+def _filter(layout, fg_h, facecam=None, game_area=None, facecam_pos=None, src_w=1920, src_h=1080, mask_file=None):
+    fc_box = _norm_box(facecam, src_w, src_h)
+    gm_box = _norm_box(game_area, src_w, src_h)
+
+    if layout == "split":
+        # Split screen: Facecam on top half (720px), Game on bottom (1200px)
+        TOP_H = 720
+        BOT_H = H - TOP_H
+        if fc_box:
+            fx, fy, fw, fh = fc_box
+            fc_f = f"[0:v]crop={fw}:{fh}:{fx}:{fy},scale={W}:{TOP_H}:force_original_aspect_ratio=increase,crop={W}:{TOP_H},setsar=1[top];"
+        else:
+            fc_f = f"[0:v]scale={W}:{TOP_H}:force_original_aspect_ratio=increase,crop={W}:{TOP_H},setsar=1[top];"
+
+        if gm_box:
+            gx, gy, gw, gh = gm_box
+            gm_f = f"[0:v]crop={gw}:{gh}:{gx}:{gy},scale={W}:{BOT_H}:force_original_aspect_ratio=increase,crop={W}:{BOT_H},setsar=1[bot];"
+        else:
+            gm_f = f"[0:v]scale={W}:{BOT_H}:force_original_aspect_ratio=increase,crop={W}:{BOT_H},setsar=1[bot];"
+
+        return f"[0:v]fps={config.OUT_FPS},split=2[in_fc][in_gm];" + fc_f.replace("[0:v]", "[in_fc]") + gm_f.replace("[0:v]", "[in_gm]") + "[top][bot]vstack=inputs=2[v0];"
+
+    if layout == "gameplay" and fc_box:
+        # Background is main game (cropped to game_area if set, else center crop)
+        # Foreground is floating facecam placed at facecam_pos
+        fx, fy, fw, fh = fc_box
+        if gm_box:
+            gx, gy, gw, gh = gm_box
+            base_crop = f"crop={gw}:{gh}:{gx}:{gy},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1"
+        else:
+            base_crop = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1"
+
+        if facecam_pos and len(facecam_pos) == 4:
+            px, py, pw, ph = [int(round(float(v))) for v in facecam_pos]
+            pw = max(100, min(W, pw))
+            ph = max(60, min(H, ph))
+            px = max(0, min(W - pw, px))
+            py = max(0, min(H - ph, py))
+        else:
+            # Reference layout style: Centered floating card near top
+            pw = min(760, W - 40)
+            ph = max(40, int(round(pw * fh / fw)))
+            px = (W - pw) // 2
+            py = 120
+
+        pw = (pw // 2) * 2
+        ph = (ph // 2) * 2
+
+        if mask_file:
+            return (f"[0:v]fps={config.OUT_FPS},split=2[base_in][fc_in];"
+                    f"[base_in]{base_crop}[b];"
+                    f"[fc_in]crop={fw}:{fh}:{fx}:{fy},scale={pw}:{ph},setsar=1,format=yuva420p[fc_scaled];"
+                    f"movie={mask_file}[fc_mask];"
+                    f"[fc_scaled][fc_mask]alphamerge[p];"
+                    f"[b][p]overlay={px}:{py}[v0];")
+        return (f"[0:v]fps={config.OUT_FPS},split=2[base_in][fc_in];"
+                f"[base_in]{base_crop}[b];"
+                f"[fc_in]crop={fw}:{fh}:{fx}:{fy},scale={pw}:{ph},setsar=1[p];"
+                f"[b][p]overlay={px}:{py}[v0];")
+
+    if layout in ("crop", "gameplay"):
+        if gm_box:
+            gx, gy, gw, gh = gm_box
+            return f"[0:v]fps={config.OUT_FPS},crop={gw}:{gh}:{gx}:{gy},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1[v0];"
         return f"[0:v]fps={config.OUT_FPS},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1[v0];"
+
     return (f"[0:v]fps={config.OUT_FPS},split=2[a][b];"
             f"[a]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=6:2,"
             f"scale={W}:{H},eq=brightness=-0.14:saturation=1.15[bg];"
@@ -252,11 +326,20 @@ def _filter(layout, fg_h, facecam=None):
             f"[bg][fg]overlay=0:(H-h)/2,setsar=1[v0];")
 
 
-def _hook_y(layout, hook_y, facecam=None):
-    """Where the heading goes. In the gameplay layout the webcam sits in the top corner, so a heading
-    across the top would run under it: it goes just below the picture instead."""
+def _hook_y(layout, hook_y, facecam=None, facecam_pos=None):
+    """Where the heading goes. In the gameplay layout the webcam sits on the video, so the heading
+    sits nicely right below the facecam card (matching reference orientation)."""
     if layout == "gameplay" and facecam and len(facecam) == 4 and facecam[2] > 8:
-        return PIP_MARGIN + int(round(PIP_W * facecam[3] / facecam[2])) + 32
+        if facecam_pos and len(facecam_pos) == 4:
+            py = int(facecam_pos[1])
+            ph = int(facecam_pos[3])
+        else:
+            py = 120
+            ph = int(round(PIP_W * facecam[3] / facecam[2]))
+        if py < 900:  # facecam is in upper half of video
+            return py + ph + 42
+    elif layout == "split":
+        return 720 + 36
     return hook_y
 
 
@@ -268,31 +351,55 @@ def render_clip(src: Path, out_dir: Path, name: str, clip: dict, words: list, sr
     """Writes <name>.mp4, <name>.jpg and <name>.ass into out_dir. Returns file names."""
     out_dir.mkdir(parents=True, exist_ok=True)
     start, end = clip["start"], clip["end"]
-    layout, fg_h, hook_y, cap_y = geometry(src_w, src_h, clip.get("layout", "blur"))
+    layout, fg_h, hook_y, cap_y = geometry(src_w, src_h, clip.get("layout", "gameplay"))
     face = clip.get("facecam")
+    game_area = clip.get("game_area")
+    facecam_pos = clip.get("facecam_pos")
     if layout == "gameplay" and not (face and len(face) == 4):
-        layout = "crop"     # no webcam found: the game fills the screen, which is still the right shape
-    hook_y = _hook_y(layout, hook_y, face)
+        layout = "crop"     # no webcam found: the game fills the screen
+    hook_y = _hook_y(layout, hook_y, face, facecam_pos)
     ass = build_ass(words if clip.get("captions", True) else [], start, end, clip.get("hook", ""), clip.get("style", "bounce"),
                     clip.get("highlight_words", []), hook_y, cap_y)
-    # The clip is made in a short work folder and moved into place afterwards. The caption step of ffmpeg cannot
-    # open files whose full path is longer than 260 characters on Windows, which a data folder deep inside other
-    # folders easily reaches. Inside the work folder every name is short and relative (a drive colon would also
-    # break the filter syntax).
     work = Path(tempfile.mkdtemp(prefix="pk"))
     try:
-        return _render_in(work, src, out_dir, name, start, end, layout, fg_h, ass, face=face)
+        return _render_in(work, src, out_dir, name, start, end, layout, fg_h, ass,
+                          face=face, game_area=game_area, facecam_pos=facecam_pos, src_w=src_w, src_h=src_h)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
 
-def _render_in(work: Path, src: Path, out_dir: Path, name: str, start, end, layout, fg_h, ass: str, face=None) -> dict:
+def _render_in(work: Path, src: Path, out_dir: Path, name: str, start, end, layout, fg_h, ass: str,
+               face=None, game_area=None, facecam_pos=None, src_w=1920, src_h=1080) -> dict:
     global _qsv_ok
     (work / f"{name}.ass").write_text(ass, encoding="utf-8")
     (work / "f").mkdir()
     for f in config.FONTS_DIR.glob("*.ttf"):
         shutil.copyfile(f, work / "f" / f.name)
-    fc = _filter(layout, fg_h, face) + f"[v0]ass={name}.ass:fontsdir=f[v]"
+
+    # Generate rounded corner mask for facecam if in gameplay layout
+    mask_file = None
+    if layout == "gameplay" and face and len(face) == 4 and face[2] > 8:
+        try:
+            from PIL import Image, ImageDraw
+            if facecam_pos and len(facecam_pos) == 4:
+                pw, ph = int(facecam_pos[2]), int(facecam_pos[3])
+            else:
+                pw = min(PIP_W, W - 40)
+                ph = max(40, int(round(pw * face[3] / face[2])))
+            pw = (pw // 2) * 2
+            ph = (ph // 2) * 2
+            rad = min(28, pw // 8, ph // 8)
+            im = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(im)
+            draw.rounded_rectangle((0, 0, pw - 1, ph - 1), radius=rad, fill=(255, 255, 255, 255))
+            m_path = work / "facecam_mask.png"
+            im.save(m_path)
+            mask_file = "facecam_mask.png"
+        except Exception:
+            mask_file = None
+
+    fc = _filter(layout, fg_h, facecam=face, game_area=game_area, facecam_pos=facecam_pos,
+                 src_w=src_w, src_h=src_h, mask_file=mask_file) + f"[v0]ass={name}.ass:fontsdir=f[v]"
     base = ["ffmpeg", "-y", "-v", "error", "-ss", f"{start:.2f}", "-t", f"{end - start:.2f}", "-i", str(src),
             "-filter_complex", fc, "-map", "[v]", "-map", "0:a:0", "-af", "loudnorm=I=-14:TP=-1.5:LRA=11",
             "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-movflags", "+faststart", "-pix_fmt"]
@@ -318,4 +425,5 @@ def _render_in(work: Path, src: Path, out_dir: Path, name: str, start, end, layo
          "-q:v", "3", f"{name}.jpg"], cwd=work)
     for ext in ("mp4", "jpg", "ass"):
         shutil.move(str(work / f"{name}.{ext}"), str(out_dir / f"{name}.{ext}"))
+    return {"file": f"{name}.mp4", "cover": f"{name}.jpg", "layout": layout}
     return {"file": f"{name}.mp4", "cover": f"{name}.jpg", "layout": layout}

@@ -123,6 +123,10 @@ def clean_options(options) -> dict:
                 raise ValueError("Captions must be on or off.")
             out[k] = v
             continue
+        if k in ("facecam", "game_area", "facecam_pos"):
+            if isinstance(v, (list, tuple)) and len(v) == 4:
+                out[k] = [round(float(x), 1) for x in v]
+            continue
         if k not in DEFAULTS or v in ("", None):
             continue
         if k in LIMITS:
@@ -361,6 +365,13 @@ def request_render(jid, cid, changes: dict):
     for k in ("hook", "title", "description", "style", "layout"):
         if k in changes:
             new[k] = str(changes[k])[:{"hook": 60, "title": 100, "description": 2000}.get(k, 20)]
+    for k in ("facecam", "game_area", "facecam_pos"):
+        if k in changes:
+            v = changes[k]
+            if v and isinstance(v, (list, tuple)) and len(v) == 4:
+                new[k] = [round(float(x), 1) for x in v]
+            elif v is None or v == "":
+                new[k] = None
     if new.get("style") not in render.STYLES:
         new["style"] = DEFAULTS["style"]
     if new.get("layout") not in render.LAYOUTS:
@@ -759,10 +770,14 @@ def _run_job(job):
                      captions=o.get("captions", True), status="queued", version=0)
             # Only the gameplay layout uses a webcam, so it is only looked for then, and only once: a
             # stream with no webcam is not looked for again on every clip of it.
-            if o["layout"] == "gameplay" and face is False:
+            if o["layout"] in ("gameplay", "split") and face is False:
                 face = _facecam(job)
             if face:
                 c["facecam"] = face
+            if o.get("game_area"):
+                c["game_area"] = o["game_area"]
+            if o.get("facecam_pos"):
+                c["facecam_pos"] = o["facecam_pos"]
             job["clips"].append(c)
             futures.append((renders.submit(ctx.bind(make), c, list(words)), c))
         job["ai"] = {"model": model, "tokens": tokens, "note": "", "log": notes[-5:]}

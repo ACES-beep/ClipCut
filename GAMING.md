@@ -63,7 +63,20 @@ use people instead of messages:
 If the names cannot be read, the old behaviour is kept — messages are counted
 as messages.
 
-## 3. The facecam is found, and the game fills the screen
+## 3. Dual Layer Area Selection (Facecam & Game Area)
+
+Gaming videos are composed of two distinct video layers:
+1. **Background Layer (Main Game)**: Can be custom cropped to focus on the action, crosshair, or character, filling the 1080x1920 vertical canvas.
+2. **Foreground Layer (Facecam)**: An adjustable webcam card with smooth rounded corners that can be placed anywhere on the video.
+
+### Interactive Visual Editor
+- Select exact crop areas for **Facecam** and **Main Game** directly on a 16:9 snapshot of the stream.
+- **Orientation Presets**:
+  - **Top-Center (Shorts/Reels Style)**: Floating rounded webcam card centered near the top, with the hook title placed directly beneath it.
+  - **Top-Right / Top-Left Corner PIP**: Classic corner Picture-in-Picture.
+  - **Split Screen**: Top half facecam, bottom half gameplay.
+  - **Freeform Drag**: Drag the facecam card anywhere on the 9:16 vertical preview canvas!
+- **Auto-Detection**: One click to automatically find the facecam coordinates.
 
 A gaming stream is a 16:9 game with a small webcam picture in one corner. ClipCut's
 "blur" layout puts the whole 16:9 frame into a band with blurred fill above and

@@ -812,6 +812,42 @@ dialog[open]{animation:fadein .16s ease}
   .set-sec h2{font-size:16px}
   .ai-big{font-size:24px}
 }
+
+/* Dual Layer & Area Selection (Facecam & Game) */
+.area-editor{background:var(--card,#1a1a1a);border:1px solid var(--line,#333);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;margin:8px 0}
+.area-editor-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600}
+.area-editor-grid{display:grid;grid-template-columns:1fr 125px;gap:12px;align-items:start}
+@media(max-width:680px){.area-editor-grid{grid-template-columns:1fr}}
+.area-stage-169{position:relative;width:100%;aspect-ratio:16/9;background:#050505;border-radius:6px;overflow:hidden;user-select:none;touch-action:none;border:1px solid var(--line,#444)}
+.area-stage-169 img{width:100%;height:100%;object-fit:cover;pointer-events:none;display:block}
+.crop-box{position:absolute;box-sizing:border-box;cursor:move;touch-action:none}
+.crop-box.fc-box{border:2px solid #00F0FF;background:rgba(0,240,255,0.22);box-shadow:0 0 10px rgba(0,240,255,0.4);z-index:10}
+.crop-box.gm-box{border:2px dashed #C084FC;background:rgba(192,132,252,0.12);z-index:5}
+.crop-tag{position:absolute;top:2px;left:4px;font-size:9px;font-weight:800;padding:2px 4px;border-radius:3px;pointer-events:none;text-transform:uppercase;letter-spacing:0.5px}
+.fc-box .crop-tag{background:#00F0FF;color:#000}
+.gm-box .crop-tag{background:#C084FC;color:#000}
+.crop-hdl{position:absolute;width:9px;height:9px;background:#fff;border-radius:2px;box-shadow:0 0 4px rgba(0,0,0,0.8)}
+.fc-box .crop-hdl{border:1px solid #00F0FF}
+.gm-box .crop-hdl{border:1px solid #C084FC}
+.crop-hdl.tl{top:-5px;left:-5px;cursor:nwse-resize}
+.crop-hdl.tr{top:-5px;right:-5px;cursor:nesw-resize}
+.crop-hdl.bl{bottom:-5px;left:-5px;cursor:nesw-resize}
+.crop-hdl.br{bottom:-5px;right:-5px;cursor:nwse-resize}
+
+/* 9:16 Preview Mockup */
+.mockup-916-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.area-mockup-916{width:125px;aspect-ratio:9/16;background:#0d0d0d;border:2px solid var(--line,#555);border-radius:12px;position:relative;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.6);display:flex;flex-direction:column;justify-content:flex-start;align-items:center}
+.mock-bg{position:absolute;inset:0;background:#202020;overflow:hidden}
+.mock-bg img{width:100%;height:100%;object-fit:cover;opacity:0.88}
+.mock-fc{position:absolute;border:2px solid #00F0FF;border-radius:8px;background:rgba(0,240,255,0.3);overflow:hidden;cursor:move;box-shadow:0 4px 12px rgba(0,0,0,0.6);z-index:20;display:flex;align-items:center;justify-content:center;color:#00F0FF;font-size:9px;font-weight:700}
+.mock-hook{position:absolute;background:#fff;color:#000;font-size:6px;font-weight:800;padding:2px 4px;border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,0.5);text-align:center;max-width:88%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:15;pointer-events:none}
+.mock-caps{position:absolute;bottom:24px;font-size:6.5px;font-weight:700;color:#00F0FF;text-shadow:0 1px 3px #000;z-index:15;pointer-events:none}
+.area-btns{display:flex;flex-wrap:wrap;gap:5px}
+.area-btn{font-size:11px;padding:3px 7px;border-radius:4px;background:var(--btn-bg,#282828);border:1px solid var(--line,#444);color:var(--ink,#eee);cursor:pointer;display:inline-flex;align-items:center;gap:3px;font-weight:500}
+.area-btn:hover{background:var(--btn-hov,#383838)}
+.area-btn.active{background:#00F0FF;color:#000;font-weight:700}
+.area-slider{display:grid;grid-template-columns:70px 1fr 35px;gap:6px;align-items:center;font-size:10.5px}
+.area-slider input[type="range"]{width:100%;accent-color:#00F0FF;margin:0}
 </style>
 </head>
 <body>
@@ -1389,7 +1425,7 @@ function drawAdd(variant) {
     </div></div></form>`;
   drawAtt();
 }
-const LAYOUT_SHORT = {blur:"Blurred fill", zoom:"Zoomed in", crop:"Fill screen", gameplay:"Gameplay + facecam"};
+const LAYOUT_SHORT = {gameplay:"Gameplay + Facecam", split:"Split screen", crop:"Fill screen", blur:"Blurred fill", zoom:"Zoomed in"};
 const CAP_LOOK = {bounce:{font:"'Archivo Black'", hl:"#FFFF00", up:true}, hype:{font:"Anton", hl:"#FF3C3C", up:true}, clean:{font:"Poppins", hl:"#6BD7FF", up:false, w:800}};
 function capPrev(k) {
   const s = CAP_LOOK[k] || {font:"inherit", hl:"#FF8B33", up:true};
@@ -2128,7 +2164,177 @@ async function drawSettings() {
 async function saveSettings() { const d = {}; $$("#sform [data-s]").forEach(i => d[i.dataset.s] = i.value); await send("/api/settings", d, "PUT"); }
 
 /* ============================================================ clip editor */
-function openClip(jid, cid) { D.jid = jid; D.cid = cid; D.sig = ""; drawClipDlg(true); $("#clipdlg").showModal(); }
+function openClip(jid, cid) {
+  D.jid = jid; D.cid = cid; D.sig = "";
+  const j = jobOf(jid), c = j?.clips.find(x => x.id === cid);
+  D.facecam = c?.facecam ? [...c.facecam] : (j?.facecam ? [...j.facecam] : [1360, 40, 520, 320]);
+  D.game_area = c?.game_area ? [...c.game_area] : (j?.game_area ? [...j.game_area] : [0, 0, 1920, 1080]);
+  D.facecam_pos = c?.facecam_pos ? [...c.facecam_pos] : [160, 120, 760, 440];
+  D.show_areas = (c?.layout === "gameplay" || c?.layout === "split" || !!c?.facecam);
+  drawClipDlg(true);
+  $("#clipdlg").showModal();
+}
+
+function syncAreaDOM() {
+  const stage = $("#stage_169");
+  if (!stage) return;
+  const sw = stage.clientWidth || 320, sh = stage.clientHeight || 180;
+  const sx = sw / 1920, sy = sh / 1080;
+
+  const fc = D.facecam || [1360, 40, 520, 320];
+  const bfc = $("#box_facecam");
+  if (bfc) {
+    bfc.style.left = (fc[0] * sx) + "px";
+    bfc.style.top = (fc[1] * sy) + "px";
+    bfc.style.width = (fc[2] * sx) + "px";
+    bfc.style.height = (fc[3] * sy) + "px";
+    const tfc = $("#txt_fc_coords");
+    if (tfc) tfc.textContent = `${Math.round(fc[0])}, ${Math.round(fc[1])} (${Math.round(fc[2])}x${Math.round(fc[3])})`;
+  }
+
+  const gm = D.game_area || [0, 0, 1920, 1080];
+  const bgm = $("#box_game");
+  if (bgm) {
+    bgm.style.left = (gm[0] * sx) + "px";
+    bgm.style.top = (gm[1] * sy) + "px";
+    bgm.style.width = (gm[2] * sx) + "px";
+    bgm.style.height = (gm[3] * sy) + "px";
+    const tgm = $("#txt_gm_coords");
+    if (tgm) tgm.textContent = `${Math.round(gm[0])}, ${Math.round(gm[1])} (${Math.round(gm[2])}x${Math.round(gm[3])})`;
+  }
+
+  const mock = $("#mockup_916");
+  const mfc = $("#mock_fc");
+  const mhook = $("#mock_hook");
+  if (mock && mfc) {
+    const mw = mock.clientWidth || 125, mh = mock.clientHeight || 222;
+    const smx = mw / 1080, smy = mh / 1920;
+    const fp = D.facecam_pos || [160, 120, 760, 440];
+    const px = fp[0] * smx, py = fp[1] * smy, pw = fp[2] * smx, ph = fp[3] * smy;
+    mfc.style.left = px + "px";
+    mfc.style.top = py + "px";
+    mfc.style.width = pw + "px";
+    mfc.style.height = ph + "px";
+
+    if (mhook) {
+      if (fp[1] < 900) {
+        mhook.style.top = (py + ph + 8) + "px";
+        mhook.style.left = "50%";
+        mhook.style.transform = "translateX(-50%)";
+      } else {
+        mhook.style.top = "24px";
+        mhook.style.left = "50%";
+        mhook.style.transform = "translateX(-50%)";
+      }
+    }
+  }
+
+  const sSize = $("#sl_fc_size"), tSize = $("#txt_fc_size");
+  if (sSize && D.facecam_pos) { sSize.value = D.facecam_pos[2]; if (tSize) tSize.textContent = D.facecam_pos[2] + "px"; }
+  const sY = $("#sl_fc_y"), tY = $("#txt_fc_y");
+  if (sY && D.facecam_pos) { sY.value = D.facecam_pos[1]; if (tY) tY.textContent = D.facecam_pos[1] + "px"; }
+}
+
+function setupDragBox(el, getCoords, setCoords, stageEl, isMockup) {
+  if (!el || !stageEl) return;
+  let active = false, mode = "move", startX = 0, startY = 0, orig = [];
+
+  el.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    active = true;
+    el.setPointerCapture(e.pointerId);
+    startX = e.clientX;
+    startY = e.clientY;
+    orig = [...getCoords()];
+    const hdl = e.target.dataset.hdl;
+    mode = hdl || "move";
+  });
+
+  el.addEventListener("pointermove", e => {
+    if (!active) return;
+    e.preventDefault();
+    const sw = stageEl.clientWidth || (isMockup ? 125 : 320);
+    const sh = stageEl.clientHeight || (isMockup ? 222 : 180);
+    const maxW = isMockup ? 1080 : 1920;
+    const maxH = isMockup ? 1920 : 1080;
+    const sx = maxW / sw, sy = maxH / sh;
+    const dx = (e.clientX - startX) * sx;
+    const dy = (e.clientY - startY) * sy;
+
+    let [x, y, w, h] = orig;
+    if (mode === "move") {
+      x = Math.max(0, Math.min(maxW - w, x + dx));
+      y = Math.max(0, Math.min(maxH - h, y + dy));
+    } else if (mode === "br") {
+      w = Math.max(80, Math.min(maxW - x, w + dx));
+      h = Math.max(50, Math.min(maxH - y, h + dy));
+    } else if (mode === "tr") {
+      w = Math.max(80, Math.min(maxW - x, w + dx));
+      const newY = Math.max(0, Math.min(orig[1] + orig[3] - 50, y + dy));
+      h = orig[1] + orig[3] - newY;
+      y = newY;
+    } else if (mode === "bl") {
+      const newX = Math.max(0, Math.min(orig[0] + orig[2] - 80, x + dx));
+      w = orig[0] + orig[2] - newX;
+      x = newX;
+      h = Math.max(50, Math.min(maxH - y, h + dy));
+    } else if (mode === "tl") {
+      const newX = Math.max(0, Math.min(orig[0] + orig[2] - 80, x + dx));
+      const newY = Math.max(0, Math.min(orig[1] + orig[3] - 50, y + dy));
+      w = orig[0] + orig[2] - newX;
+      h = orig[1] + orig[3] - newY;
+      x = newX;
+      y = newY;
+    }
+    setCoords([Math.round(x), Math.round(y), Math.round(w), Math.round(h)]);
+    syncAreaDOM();
+  });
+
+  const onEnd = e => {
+    if (active) {
+      active = false;
+      try { el.releasePointerCapture(e.pointerId); } catch {}
+    }
+  };
+  el.addEventListener("pointerup", onEnd);
+  el.addEventListener("pointercancel", onEnd);
+}
+
+function initAreaSelector() {
+  const stage = $("#stage_169");
+  if (!stage) return;
+  setupDragBox($("#box_facecam"), () => D.facecam || [1360, 40, 520, 320], v => { D.facecam = v; }, stage, false);
+  setupDragBox($("#box_game"), () => D.game_area || [0, 0, 1920, 1080], v => { D.game_area = v; }, stage, false);
+  const mock = $("#mockup_916");
+  if (mock) {
+    setupDragBox($("#mock_fc"), () => D.facecam_pos || [160, 120, 760, 440], v => { D.facecam_pos = v; }, mock, true);
+  }
+  const slSize = $("#sl_fc_size");
+  if (slSize) {
+    slSize.addEventListener("input", e => {
+      const w = parseInt(e.target.value, 10);
+      const cur = D.facecam_pos || [160, 120, 760, 440];
+      const fc = D.facecam || [1360, 40, 520, 320];
+      const aspect = fc[3] / (fc[2] || 1);
+      const h = Math.round(w * aspect);
+      const x = Math.max(0, (1080 - w) / 2);
+      D.facecam_pos = [Math.round(x), cur[1], w, h];
+      syncAreaDOM();
+    });
+  }
+  const slY = $("#sl_fc_y");
+  if (slY) {
+    slY.addEventListener("input", e => {
+      const y = parseInt(e.target.value, 10);
+      const cur = D.facecam_pos || [160, 120, 760, 440];
+      D.facecam_pos = [cur[0], y, cur[2], cur[3]];
+      syncAreaDOM();
+    });
+  }
+  requestAnimationFrame(() => syncAreaDOM());
+}
+
 function drawClipDlg(full) {
   const j = jobOf(D.jid), c = j?.clips.find(x => x.id === D.cid), dlg = $("#clipdlg");
   if (!c) { if (dlg.open) dlg.close(); return; }
@@ -2145,7 +2351,85 @@ function drawClipDlg(full) {
         <label class="f">Big text<input data-f="hook" value="${esc(c.hook)}"></label>
         <label class="sw"><input type="checkbox" data-f="captions" data-caption-toggle ${c.captions === false ? "" : "checked"}>Generate captions</label>
         <div class="two"><label class="f">Caption style<select data-f="style" data-caption-style ${c.captions === false ? "disabled" : ""}>${opts(S.status.styles, c.style)}</select></label>
-          <label class="f">Layout<select data-f="layout">${opts(S.status.layouts, c.layout)}</select></label></div>
+          <label class="f">Layout<select data-f="layout" id="clip_layout_sel">${opts(S.status.layouts, c.layout)}</select></label></div>
+
+        <!-- Dual Layer & Area Selection (Gaming / Facecam) -->
+        <div style="border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:6px;background:var(--bg-card,#181818)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px">
+              🎮 Dual Layer Areas (Game & Facecam)
+            </span>
+            <button type="button" class="btn sm" data-act="toggle_areas">
+              ${D.show_areas ? "Hide Areas" : "Adjust Areas"}
+            </button>
+          </div>
+          ${D.show_areas ? `
+          <div class="area-editor" id="area_editor_box">
+            <div class="area-editor-head">
+              <span>Source 16:9 Frame (Crop Areas)</span>
+              <div class="area-btns">
+                <button type="button" class="area-btn" data-act="detect_facecam">✨ Auto-Detect Facecam</button>
+                <button type="button" class="area-btn" data-act="reset_game">🎯 Center Game</button>
+              </div>
+            </div>
+            <div class="area-editor-grid">
+              <div>
+                <div class="area-stage-169" id="stage_169">
+                  <img src="/api/jobs/${j.id}/frame?t=${c.start || 2}" alt="Source frame">
+                  <div class="crop-box gm-box" id="box_game">
+                    <span class="crop-tag">Main Game</span>
+                    <div class="crop-hdl tl" data-hdl="tl"></div>
+                    <div class="crop-hdl tr" data-hdl="tr"></div>
+                    <div class="crop-hdl bl" data-hdl="bl"></div>
+                    <div class="crop-hdl br" data-hdl="br"></div>
+                  </div>
+                  <div class="crop-box fc-box" id="box_facecam">
+                    <span class="crop-tag">Facecam</span>
+                    <div class="crop-hdl tl" data-hdl="tl"></div>
+                    <div class="crop-hdl tr" data-hdl="tr"></div>
+                    <div class="crop-hdl bl" data-hdl="bl"></div>
+                    <div class="crop-hdl br" data-hdl="br"></div>
+                  </div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--dim)">
+                  <span>🟢 <b style="color:#00F0FF">Facecam</b>: <span id="txt_fc_coords"></span></span>
+                  <span>🟣 <b style="color:#C084FC">Game</b>: <span id="txt_gm_coords"></span></span>
+                </div>
+              </div>
+              <div class="mockup-916-wrap">
+                <div style="font-size:10.5px;font-weight:600;color:var(--dim)">9:16 Preview</div>
+                <div class="area-mockup-916" id="mockup_916">
+                  <div class="mock-bg" id="mock_bg"><img src="/api/jobs/${j.id}/frame?t=${c.start || 2}" alt=""></div>
+                  <div class="mock-fc" id="mock_fc">Facecam</div>
+                  <div class="mock-hook" id="mock_hook">${esc(c.hook || "TITLE HOOK")}</div>
+                  <div class="mock-caps">CAPTIONS</div>
+                </div>
+                <div style="font-size:9px;color:var(--dim);text-align:center">Drag Facecam card above</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px">
+              <div style="font-size:11px;font-weight:600">Facecam Orientation Presets:</div>
+              <div class="area-btns">
+                <button type="button" class="area-btn active" data-act="pos_top_center">⭐ Top-Center (Ref Style)</button>
+                <button type="button" class="area-btn" data-act="pos_top_right">Top-Right</button>
+                <button type="button" class="area-btn" data-act="pos_top_left">Top-Left</button>
+                <button type="button" class="area-btn" data-act="pos_bottom_right">Bottom-Right</button>
+              </div>
+              <div class="area-slider">
+                <span>Facecam Size</span>
+                <input type="range" id="sl_fc_size" min="300" max="960" step="20" value="${D.facecam_pos?.[2] || 760}">
+                <span id="txt_fc_size">${D.facecam_pos?.[2] || 760}px</span>
+              </div>
+              <div class="area-slider">
+                <span>Vertical Y</span>
+                <input type="range" id="sl_fc_y" min="20" max="1000" step="10" value="${D.facecam_pos?.[1] || 120}">
+                <span id="txt_fc_y">${D.facecam_pos?.[1] || 120}px</span>
+              </div>
+            </div>
+          </div>
+          ` : ""}
+        </div>
+
         <div class="two"><label class="f">Start (seconds)<input data-f="start" type="number" step="0.5" value="${c.start}"></label>
           <label class="f">End (seconds)<input data-f="end" type="number" step="0.5" value="${c.end}"></label></div>
         <h3>Post text</h3>
@@ -2161,6 +2445,18 @@ function drawClipDlg(full) {
           ${c.status === "done" ? `<a class="btn" href="${m}${esc(c.file)}?download=1">${ic("down")}Download</a>` : ""}
           <button class="btn" data-act="copy" data-j="${j.id}" data-c="${esc(c.id)}">${ic("copy")}Copy post text</button></div>
       </div></div>`;
+    if (D.show_areas) {
+      setTimeout(initAreaSelector, 50);
+    }
+    const lSel = $("#clip_layout_sel");
+    if (lSel) {
+      lSel.addEventListener("change", e => {
+        if (e.target.value === "gameplay" || e.target.value === "split") {
+          D.show_areas = true;
+          drawClipDlg(true);
+        }
+      });
+    }
   } else if (D.sig !== sig) $("#stage").innerHTML = stage;
   D.sig = sig;
   put($("#dposts"), postPills(c));
@@ -2458,10 +2754,71 @@ document.addEventListener("click", async e => {
       if (!await ask("Disconnect this account?", "Posts still waiting for it will fail.", "Disconnect", true)) return;
       await api(`/api/accounts/${d.id}`, {method:"DELETE"}); await tick(); return drawSettings();
     }
+    if (a === "toggle_areas") {
+      D.show_areas = !D.show_areas;
+      drawClipDlg(true);
+      return;
+    }
+    if (a === "detect_facecam") {
+      b.disabled = true;
+      try {
+        const res = await api(`/api/jobs/${D.jid}/detect-facecam`, {method:"POST"});
+        if (res.ok && res.facecam) {
+          D.facecam = res.facecam;
+          syncAreaDOM();
+          toast("Facecam auto-detected!", "ok");
+        } else {
+          toast(res.message || "No facecam found in this frame", "bad");
+        }
+      } catch (err) { toast(err.message, "bad"); }
+      finally { b.disabled = false; }
+      return;
+    }
+    if (a === "reset_game") {
+      D.game_area = [420, 0, 1080, 1080];
+      syncAreaDOM();
+      toast("Game area centered (9:16 / 1:1)", "ok");
+      return;
+    }
+    if (a === "pos_top_center") {
+      D.facecam_pos = [160, 120, 760, 440];
+      syncAreaDOM();
+      $$(".area-btns .area-btn").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      toast("Set to Top-Center (Reference style)", "ok");
+      return;
+    }
+    if (a === "pos_top_right") {
+      D.facecam_pos = [660, 26, 390, 240];
+      syncAreaDOM();
+      $$(".area-btns .area-btn").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      toast("Set to Top-Right Corner", "ok");
+      return;
+    }
+    if (a === "pos_top_left") {
+      D.facecam_pos = [30, 26, 390, 240];
+      syncAreaDOM();
+      $$(".area-btns .area-btn").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      toast("Set to Top-Left Corner", "ok");
+      return;
+    }
+    if (a === "pos_bottom_right") {
+      D.facecam_pos = [660, 1600, 390, 240];
+      syncAreaDOM();
+      $$(".area-btns .area-btn").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      toast("Set to Bottom-Right Corner", "ok");
+      return;
+    }
     if (a === "remake") {
       const body = {}; $$("#clipdlg [data-f]").forEach(i => {
         body[i.dataset.f] = i.type === "checkbox" ? i.checked : i.type === "number" ? Number(i.value) : i.value;
       });
+      if (D.facecam) body.facecam = D.facecam;
+      if (D.game_area) body.game_area = D.game_area;
+      if (D.facecam_pos) body.facecam_pos = D.facecam_pos;
       await send(`/api/jobs/${D.jid}/clips/${D.cid}/render`, body); toast("Re-making the clip…", "ok"); return tick();
     }
     if (a === "postnow" || a === "postqueue") {

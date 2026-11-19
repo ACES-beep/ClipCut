@@ -943,6 +943,52 @@ def rerender(jid: str, cid: str, body: dict = Body(...)):
     return jobs.public(job)
 
 
+@app.get("/api/jobs/{jid}/frame")
+def job_frame(jid: str, t: float = 2.0):
+    job = _job_or_404(jid)
+    d = Path(job["dir"])
+    thumb = d / "clips" / "thumb.jpg"
+    src = job.get("source_path")
+    if not src or not Path(src).is_file():
+        for p in d.glob("*.mp4"):
+            src = str(p)
+            break
+    if not src or not Path(src).is_file():
+        if thumb.is_file():
+            return FileResponse(thumb, media_type="image/jpeg")
+        raise HTTPException(404, "No video available")
+    safe_t = max(0.1, min(t, job.get("duration", 3600.0) or 3600.0))
+    out_frame = d / "clips" / f"frame_{int(round(safe_t))}.jpg"
+    if not out_frame.is_file():
+        try:
+            media.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{safe_t:.2f}",
+                       "-i", str(src), "-frames:v", "1", "-q:v", "3", str(out_frame)])
+        except Exception:
+            if thumb.is_file():
+                return FileResponse(thumb, media_type="image/jpeg")
+            raise HTTPException(500, "Could not extract frame")
+    return FileResponse(out_frame, media_type="image/jpeg")
+
+
+@app.post("/api/jobs/{jid}/detect-facecam")
+def detect_facecam_route(jid: str):
+    job = _job_or_404(jid)
+    src = job.get("source_path")
+    if not src or not Path(src).is_file():
+        for p in Path(job["dir"]).glob("*.mp4"):
+            src = str(p)
+            break
+    if not src or not Path(src).is_file():
+        raise HTTPException(400, "Source video is not available locally.")
+    try:
+        box = facecam.detect(src, ask=brain.look_for_facecam)
+        if box:
+            return {"ok": True, "facecam": [box["x"], box["y"], box["w"], box["h"]], "conf": box.get("conf")}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    return {"ok": False, "message": "No facecam detected"}
+
+
 @app.delete("/api/jobs/{jid}")
 def delete_job(jid: str):
     job = _job_or_404(jid)
