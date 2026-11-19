@@ -1077,6 +1077,39 @@ def delete_my_account(request: Request, body: dict = Body(...)):
     return resp
 
 
+@app.get("/media/{jid}/source/video")
+@app.get("/media/{jid}/clips/{cid}/source/video")
+def job_source_video(jid: str, cid: str = None):
+    job = _job_or_404(jid)
+    src = None
+    d = Path(job.get("dir", ""))
+    if cid:
+        for c in job.get("clips", []):
+            if c.get("id") == cid:
+                if c.get("src") and Path(c["src"]).is_file():
+                    src = str(c["src"])
+                break
+    if not src:
+        src = job.get("source_path")
+    if not src or not Path(src).is_file():
+        candidates = list((d / "pieces").glob("*.mp4")) + list(d.glob("*.mp4"))
+        for p in candidates:
+            if p.is_file():
+                src = str(p)
+                break
+    if not src or not Path(src).is_file():
+        for c in job.get("clips", []):
+            if cid and c.get("id") != cid:
+                continue
+            f = d / "clips" / c.get("file", "")
+            if f.is_file():
+                src = str(f)
+                break
+    if not src or not Path(src).is_file():
+        raise HTTPException(404, "Source video not found")
+    return FileResponse(src, media_type="video/mp4", headers={"Accept-Ranges": "bytes"})
+
+
 @app.get("/media/{jid}/{name}")
 def media_file(jid: str, name: str, download: int = 0):
     if not re.fullmatch(r"[\w\-]+\.(mp4|jpg)", name):

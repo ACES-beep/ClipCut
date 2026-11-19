@@ -10,13 +10,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@300&family=Archivo+Black&family=Anton&family=Poppins:wght@800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --brand:#FF8B33;--brand-press:#F27A1F;--brand-ink:#2A1A12;--brand-soft:#FFF2E8;--brand-line:#FFD9BC;--brand-deep:#A9480A;
-  --frame:#1E1612;--frame-2:#2C221D;--frame-line:rgba(255,255,255,.08);--frame-text:#F4EEEA;--frame-dim:#A99A91;
-  --bg:#FFFFFF;--muted:#F7F4F1;--line:#EEE8E4;--line-2:#E1D9D3;
-  --text:#211813;--dim:#6D6159;--faint:#A0948C;
-  --good:#0F8A57;--good-soft:#E6F6EE;--bad:#D3343F;--bad-soft:#FDECEE;--live:#E5323F;
+  --brand:#00F0FF;--brand-press:#00C8D6;--brand-ink:#000000;--brand-soft:rgba(0,240,255,0.12);--brand-line:rgba(0,240,255,0.28);--brand-deep:#38BDF8;
+  --frame:#070A0F;--frame-2:#0D131F;--frame-line:rgba(255,255,255,.08);--frame-text:#F8FAFC;--frame-dim:#94A3B8;
+  --bg:#0B0F17;--muted:#111724;--line:#1C2638;--line-2:#28374F;
+  --text:#F8FAFC;--dim:#94A3B8;--faint:#64748B;
+  --good:#10B981;--good-soft:rgba(16,185,129,0.16);--bad:#EF4444;--bad-soft:rgba(239,68,68,0.16);--live:#F43F5E;
   --r-lg:16px;--r:12px;--r-sm:8px;
-  color-scheme:light;
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -27,7 +27,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 svg{width:18px;height:18px;flex:none;fill:currentColor}
 ::selection{background:var(--brand-line)}
 :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
-::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#E2D9D7;border-radius:999px;border:3px solid #fff}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#28374F;border-radius:999px;border:2px solid var(--bg)}
 
 /* ---------- frame */
 .app{display:grid;grid-template-columns:240px minmax(0,1fr);height:100vh}
@@ -198,9 +198,10 @@ img.avatar.ring{background:transparent}
 /* ---------- buttons */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 14px;border-radius:var(--r);border:1px solid var(--line-2);background:#fff;color:var(--text);cursor:pointer;text-decoration:none;white-space:nowrap;font-weight:600}
 .btn:active{background:var(--muted)}
-.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
-.btn.primary:active{background:var(--brand-press);border-color:var(--brand-press)}
-.btn.dark{background:var(--brand-ink);border-color:var(--brand-ink);color:#fff}
+.btn.primary{background:linear-gradient(135deg, #00F0FF 0%, #A855F7 100%);border:0;color:#000;font-weight:700;box-shadow:0 0 16px rgba(0,240,255,0.25)}
+.btn.primary:hover{filter:brightness(1.1);box-shadow:0 0 22px rgba(0,240,255,0.4)}
+.btn.primary:active{background:var(--brand-press)}
+.btn.dark{background:var(--frame-2);border-color:var(--line-2);color:#fff}
 .btn.dark svg{color:var(--brand)}
 .btn.danger{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
 .btn.ghost{background:transparent;border-color:transparent;color:var(--dim)}
@@ -211,28 +212,28 @@ img.avatar.ring{background:transparent}
 .btn:disabled{opacity:.45;cursor:default;pointer-events:none}
 
 /* ---------- fields */
-:where(input:not([type=checkbox],[type=radio],[type=file],[type=range]),select,textarea){width:100%;height:40px;padding:0 12px;background:#fff;border:1px solid var(--line-2);border-radius:var(--r-sm);min-width:0;outline:none;transition:border-color .15s ease}
+:where(input:not([type=checkbox],[type=radio],[type=file],[type=range]),select,textarea){width:100%;height:40px;padding:0 12px;background:#0F1522;border:1px solid var(--line-2);border-radius:var(--r-sm);color:#fff;min-width:0;outline:none;transition:border-color .15s ease,box-shadow .15s ease}
 :where(textarea){height:auto;padding:10px 12px;resize:vertical}
-:where(input:not([type=checkbox],[type=radio],[type=file],[type=range]),select,textarea):hover{border-color:#D9CCC2}
-:where(input:not([type=checkbox],[type=radio],[type=file],[type=range]),select,textarea):focus{background:#fff;border-color:var(--brand)}
+:where(input:not([type=checkbox],[type=radio],[type=file],[type=range]),select,textarea):hover{border-color:#38BDF8}
+:where(input:not([type=checkbox],[type=radio],[type=file],[type=range]),select,textarea):focus{background:#111927;border-color:var(--brand);box-shadow:0 0 10px rgba(0,240,255,0.25)}
 input:not([type=checkbox],[type=radio],[type=range]):focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
 input::placeholder,textarea::placeholder{color:var(--faint)}
 label.f{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--dim);font-weight:600}
 label.sw{display:flex;align-items:center;gap:12px;cursor:pointer;color:var(--text);font-weight:600}
-label.sw input{appearance:none;width:38px;height:22px;border-radius:999px;background:#DCD2D0;position:relative;cursor:pointer;flex:none;margin:0}
-label.sw input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
-label.sw input:checked{background:var(--brand)}label.sw input:checked::after{transform:translateX(16px)}
+label.sw input{appearance:none;width:38px;height:22px;border-radius:999px;background:#1E293B;position:relative;cursor:pointer;flex:none;margin:0}
+label.sw input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#94A3B8;transition:transform .15s,background-color .15s}
+label.sw input:checked{background:var(--brand)}label.sw input:checked::after{transform:translateX(16px);background:#000}
 label.sw small{display:block;color:var(--dim);font-size:12px;font-weight:400}
-label.ck{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 13px;border-radius:var(--r);cursor:pointer;background:#fff;border:1px solid var(--line-2);font-weight:500}
-label.ck:has(input:checked){background:var(--brand-soft);border-color:var(--brand-line);color:var(--brand-ink)}
+label.ck{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 13px;border-radius:var(--r);cursor:pointer;background:#0F1522;border:1px solid var(--line-2);font-weight:500;color:#fff}
+label.ck:has(input:checked){background:var(--brand-soft);border-color:var(--brand-line);color:#00F0FF}
 label.ck input{accent-color:var(--brand);margin:0}
 [data-caption-style]:disabled{opacity:.45;cursor:default}
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px}
 .span{grid-column:1/-1}
 
 /* ---------- surfaces */
-.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:22px;margin-bottom:16px}
-.card>h2,.card-head h2{font-size:15px;font-weight:600;color:var(--brand-ink)}
+.card{background:#111724;border:1px solid var(--line);border-radius:var(--r);padding:22px;margin-bottom:16px;box-shadow:0 4px 24px rgba(0,0,0,0.4)}
+.card>h2,.card-head h2{font-size:15px;font-weight:600;color:#fff}
 .card>h2{margin-bottom:4px}
 .card>h2+.help{margin-bottom:18px}
 .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
@@ -242,9 +243,9 @@ label.ck input{accent-color:var(--brand);margin:0}
 .tabbtn svg{width:17px;height:17px}
 .tabbtn .n{font-size:11px;font-weight:600;min-width:20px;padding:1px 7px;border-radius:999px;background:var(--muted);color:var(--dim);text-align:center;transition:background-color .15s ease,color .15s ease}
 .tabbtn::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--brand);opacity:0}
-.tabbtn.on{color:var(--brand-ink)}
+.tabbtn.on{color:#00F0FF}
 .tabbtn.on::after{opacity:1;animation:tabin .28s ease}
-.tabbtn.on .n{background:var(--brand-soft);color:var(--brand-ink)}
+.tabbtn.on .n{background:var(--brand-soft);color:var(--brand-deep)}
 .tabbtn.on svg{color:var(--brand)}
 @keyframes tabin{from{transform:scaleX(.3);opacity:0}to{transform:none;opacity:1}}
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--muted);color:var(--dim);white-space:nowrap;text-decoration:none}
@@ -252,12 +253,12 @@ label.ck input{accent-color:var(--brand);margin:0}
 .pill.bad{color:var(--bad);background:var(--bad-soft)}
 .pill.warn{color:var(--brand-deep);background:var(--brand-soft)}
 .pill.live{color:#fff;background:var(--live)}
-.pill.brand{color:var(--brand-ink);background:var(--brand)}
+.pill.brand{color:#000;background:var(--brand)}
 .dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.3s infinite}
 @keyframes pulse{50%{opacity:.3}}
 .empty{border:1px dashed var(--line-2);border-radius:var(--r);padding:48px 20px;text-align:center;color:var(--dim);display:flex;flex-direction:column;align-items:center;gap:4px}
 .empty img{width:56px;height:56px;margin-bottom:12px}
-.empty b{display:block;color:var(--brand-ink);font-size:15px;font-weight:600}
+.empty b{display:block;color:#fff;font-size:15px;font-weight:600}
 
 /* ---------- home hero + composer */
 .hero{position:relative;padding:44px 28px 52px;text-align:center}
@@ -265,19 +266,24 @@ label.ck input{accent-color:var(--brand);margin:0}
   -webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 14%,black 70%,transparent 100%);mask-image:linear-gradient(to bottom,transparent 0%,black 14%,black 70%,transparent 100%)}
 .hero>:not(.ga-bg){position:relative;z-index:2}
 #view{position:relative;z-index:1}
-.hero h2{font-size:clamp(21px,5.2vw,28px);font-weight:700;letter-spacing:-.03em;color:var(--brand-ink);line-height:1.2;text-wrap:balance}
+.hero h2{font-size:clamp(21px,5.2vw,28px);font-weight:700;letter-spacing:-.03em;color:#FFFFFF;line-height:1.2;text-wrap:balance}
 .hero>p{color:var(--dim);margin:8px auto 22px;max-width:520px;font-size:15px}
-.composer{max-width:760px;margin:0 auto;background:#fff;border:1px solid var(--line-2);border-radius:var(--r-lg);text-align:left;transition:background-color .15s ease,border-color .15s ease}
-.composer:has(#url:focus){border-color:#FFB27A}
-.composer.compact{max-width:none;margin-bottom:28px;background:var(--muted)}
+.composer{max-width:760px;margin:0 auto;background:#111724;border:1px solid var(--line-2);border-radius:var(--r-lg);text-align:left;box-shadow:0 8px 36px rgba(0,0,0,0.5);transition:background-color .15s ease,border-color .15s ease}
+.composer:has(#url:focus){border-color:var(--brand);box-shadow:0 0 24px rgba(0,240,255,0.25)}
+.composer.compact{max-width:none;margin-bottom:28px;background:#111724}
 .composer.over{background:var(--brand-soft);border-color:var(--brand)}
 .composer :focus-visible{outline:none}
 .composer-input{position:relative;display:flex;align-items:center}
 .composer-input>svg{position:absolute;left:18px;color:var(--faint);width:20px;height:20px;transition:color .15s ease}
 .composer-input:focus-within>svg{color:var(--brand)}
-.composer-input input,.composer-input input:focus{height:60px;border:0;background:transparent;padding:0 18px 0 48px;font-size:16px;border-radius:var(--r-lg) var(--r-lg) 0 0}
+.composer-input input,.composer-input input:focus{height:60px;border:0;background:transparent;padding:0 18px 0 48px;font-size:16px;border-radius:var(--r-lg) var(--r-lg) 0 0;color:#fff}
 .composer-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:2px 10px 10px 12px}
-.chip{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:999px;border:0;background:var(--muted);color:var(--dim);font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap;transition:background-color .15s ease,color .15s ease}
+.chip{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line-2);background:#162032;color:#CBD5E1;font-weight:500;font-size:13px;cursor:pointer;white-space:nowrap;transition:background-color .15s ease,color .15s ease}
+.composer.compact .chip{background:#162032}
+.chip svg{width:16px;height:16px}
+.chip:hover,.chip:focus-visible{background:#1E2B42;color:#fff;border-color:#38BDF8}
+.chip.on,.pick.open .chip{background:var(--brand-soft);border-color:var(--brand);color:#00F0FF}
+.hint{font-size:12px;color:var(--faint);margin-right:6px}
 .composer.compact .chip{background:#fff}
 .chip svg{width:16px;height:16px}
 .chip:hover,.chip:focus-visible{background:#EDE3DB;color:var(--text)}
@@ -359,58 +365,58 @@ img.av{object-fit:cover}
 
 /* options panel */
 .og{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.ob{background:var(--muted);border-radius:12px;padding:12px 14px 14px;min-width:0}
-.composer.compact .ob{background:#fff}
+.ob{background:var(--muted);border-radius:12px;padding:12px 14px 14px;min-width:0;border:1px solid var(--line)}
+.composer.compact .ob{background:#111724}
 .ob.wide{grid-column:1/-1}
 .ot{font-size:12px;font-weight:600;color:var(--dim);margin-bottom:10px}
 .ot.cap-head{display:flex;align-items:center;justify-content:space-between;gap:4px 8px;flex-wrap:wrap}
 .cap-head label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--text)}
 .cap-head input{accent-color:var(--brand);margin:0}
 .nsteps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.nstep{display:flex;flex-direction:column;gap:6px;background:#fff;border-radius:10px;padding:10px 10px 8px}
-.composer.compact .nstep{background:var(--muted)}
+.nstep{display:flex;flex-direction:column;gap:6px;background:#162032;border:1px solid var(--line-2);border-radius:10px;padding:10px 10px 8px}
+.composer.compact .nstep{background:#162032}
 .nstep>span{font-size:12px;color:var(--faint)}
 .nstep .ctl{display:flex;align-items:center;gap:6px}
-.nstep .ctl button{flex:none;width:28px;height:28px;border-radius:8px;border:0;background:var(--muted);color:var(--text);display:grid;place-items:center;cursor:pointer;transition:background-color .15s ease,color .15s ease}
-.composer.compact .nstep .ctl button{background:#fff}
-.nstep .ctl button:hover,.nstep .ctl button:focus-visible{background:var(--brand);color:#fff}
+.nstep .ctl button{flex:none;width:28px;height:28px;border-radius:8px;border:0;background:#0F1522;color:var(--text);display:grid;place-items:center;cursor:pointer;transition:background-color .15s ease,color .15s ease}
+.composer.compact .nstep .ctl button{background:#0F1522}
+.nstep .ctl button:hover,.nstep .ctl button:focus-visible{background:var(--brand);color:#000}
 .nstep .ctl button svg{width:14px;height:14px}
-.nstep input,.nstep input:focus{flex:1;min-width:0;height:30px;padding:0;border:0;background:transparent;text-align:center;font-size:20px;font-weight:700;color:var(--brand-ink);-moz-appearance:textfield}
+.nstep input,.nstep input:focus{flex:1;min-width:0;height:30px;padding:0;border:0;background:transparent;text-align:center;font-size:20px;font-weight:700;color:#fff;-moz-appearance:textfield}
 .nstep input::-webkit-inner-spin-button,.nstep input::-webkit-outer-spin-button,.range input::-webkit-inner-spin-button,.range input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .nstep .ctl i{font-style:normal;font-size:12px;color:var(--faint);width:10px}
 .tiles3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.tile-o{display:flex;flex-direction:column;gap:7px;padding:6px 6px 8px;border:0;border-radius:10px;background:#fff;color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:background-color .15s ease,color .15s ease}
-.composer.compact .tile-o{background:var(--muted)}
-.tile-o:enabled:hover,.tile-o:focus-visible{background:#EDE3DB;color:var(--text)}
-.tile-o[aria-pressed=true]{background:var(--brand-soft);color:var(--brand-ink)}
-.cap-prev{height:54px;border-radius:7px;background:#1E1612;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;font-size:14px;line-height:1;color:#fff;letter-spacing:0;-webkit-text-stroke:1px #000;paint-order:stroke fill}
+.tile-o{display:flex;flex-direction:column;gap:7px;padding:6px 6px 8px;border:1px solid var(--line-2);border-radius:10px;background:#162032;color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+.composer.compact .tile-o{background:#162032}
+.tile-o:enabled:hover,.tile-o:focus-visible{background:#1E2B42;color:#fff;border-color:#38BDF8}
+.tile-o[aria-pressed=true]{background:var(--brand-soft);border-color:var(--brand);color:#00F0FF}
+.cap-prev{height:54px;border-radius:7px;background:#090D14;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;font-size:14px;line-height:1;color:#fff;letter-spacing:0;-webkit-text-stroke:1px #000;paint-order:stroke fill}
 .cap-prev b{font-weight:inherit}
-.lay-prev{height:54px;border-radius:7px;background:#1E1612;display:grid;place-items:center}
-.lay-prev .ph{position:relative;width:28px;height:48px;border-radius:4px;overflow:hidden;background:#4A3428}
-.lay-prev .ph::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,#B4643A,#5E3A2A);filter:blur(3px);opacity:.75}
-.lay-prev .ph i{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:16px;background:linear-gradient(135deg,#FF8B33,#FFB27A)}
+.lay-prev{height:54px;border-radius:7px;background:#090D14;display:grid;place-items:center}
+.lay-prev .ph{position:relative;width:28px;height:48px;border-radius:4px;overflow:hidden;background:#162032}
+.lay-prev .ph::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,#1E293B,#0F172A);filter:blur(3px);opacity:.75}
+.lay-prev .ph i{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:16px;background:linear-gradient(135deg,#00F0FF,#8B5CF6)}
 .lay-prev.zoom .ph i{left:-6px;right:-6px;height:24px}
 .lay-prev.crop .ph i{left:0;right:0;top:0;height:100%;transform:none}
-.seg{display:flex;gap:4px;background:#fff;border-radius:10px;padding:4px}
-.composer.compact .seg{background:var(--muted)}
+.seg{display:flex;gap:4px;background:#162032;border:1px solid var(--line-2);border-radius:10px;padding:4px}
+.composer.compact .seg{background:#162032}
 .seg button{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 6px;border:0;border-radius:7px;background:transparent;color:var(--dim);font-size:13px;font-weight:600;cursor:pointer;transition:background-color .15s ease,color .15s ease}
 .seg button small{font-size:11px;font-weight:500;color:var(--faint);transition:color .15s ease}
-.seg button:hover,.seg button:focus-visible{background:#EDE3DB;color:var(--text)}
-.seg button[aria-pressed=true]{background:var(--brand-soft);color:var(--brand-ink)}
-.seg button[aria-pressed=true] small{color:#B8693A}
+.seg button:hover,.seg button:focus-visible{background:#1E2B42;color:#fff}
+.seg button[aria-pressed=true]{background:var(--brand-soft);color:#00F0FF}
+.seg button[aria-pressed=true] small{color:#38BDF8}
 .range{display:flex;align-items:center;gap:8px}
-.range label{flex:1;display:flex;align-items:center;gap:6px;background:#fff;border-radius:10px;padding:0 10px;height:44px;font-size:12px;color:var(--faint);min-width:0}
-.composer.compact .range label{background:var(--muted)}
-.range input,.range input:focus{flex:1;min-width:0;height:40px;border:0;background:transparent;padding:0;font-size:15px;font-weight:600;color:var(--brand-ink);-moz-appearance:textfield}
+.range label{flex:1;display:flex;align-items:center;gap:6px;background:#162032;border:1px solid var(--line-2);border-radius:10px;padding:0 10px;height:44px;font-size:12px;color:var(--faint);min-width:0}
+.composer.compact .range label{background:#162032}
+.range input,.range input:focus{flex:1;min-width:0;height:40px;border:0;background:transparent;padding:0;font-size:15px;font-weight:600;color:#fff;-moz-appearance:textfield}
 .range>svg{width:14px;height:14px;color:var(--faint);flex:none}
 @media (max-width:640px){.og{grid-template-columns:1fr}.nsteps{grid-template-columns:1fr}}
 
 /* ---------- home blocks */
 .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:16px}
-.tile{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column}
-.tile i{width:32px;height:32px;border-radius:var(--r-sm);background:var(--brand-soft);color:var(--brand-deep);display:grid;place-items:center;margin-bottom:14px}
+.tile{background:#111724;border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.tile i{width:32px;height:32px;border-radius:var(--r-sm);background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;margin-bottom:14px}
 .tile i svg{width:18px;height:18px}
-.tile b{font-size:26px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--brand-ink);line-height:1.1}
+.tile b{font-size:26px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#fff;line-height:1.1}
 .tile span{font-size:13px;color:var(--dim);margin-top:2px}
 .home-grid{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(300px,1fr);gap:16px;align-items:stretch}
 .home-grid>.card:first-child{display:flex;flex-direction:column}
@@ -593,34 +599,34 @@ a.lnk{color:var(--brand-ink);text-decoration:none;font-weight:600}
 .plan:has(input:focus-visible){outline:2px solid var(--brand);outline-offset:2px}
 
 /* ---------- dialogs + toasts */
-dialog{border:1px solid var(--line);background:#fff;color:var(--text);border-radius:var(--r-lg);padding:0;max-width:calc(100vw - 32px)}
-dialog::backdrop{background:rgba(14,12,11,.42);animation:fadein .16s ease}
-.dlg{padding:24px;width:450px;max-width:100%;display:flex;flex-direction:column;gap:14px}
-.dlg h2{font-size:18px;font-weight:600;color:var(--brand-ink)}
+dialog{border:1px solid var(--line-2);background:#0E1420;color:#fff;border-radius:var(--r-lg);padding:0;max-width:calc(100vw - 32px);box-shadow:0 25px 80px rgba(0,0,0,0.85)}
+dialog::backdrop{background:rgba(4,6,10,.8);backdrop-filter:blur(6px);animation:fadein .16s ease}
+.dlg{padding:24px;width:450px;max-width:100%;display:flex;flex-direction:column;gap:14px;background:#0E1420;color:#fff}
+.dlg h2{font-size:18px;font-weight:700;color:#fff}
 .dlg-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
 .editor{display:grid;grid-template-columns:minmax(240px,340px) minmax(300px,450px);max-height:calc(100vh - 48px)}
-.editor .stage{background:#17110E;display:grid;place-items:center;position:relative;min-height:320px}
+.editor .stage{background:#090D14;display:grid;place-items:center;position:relative;min-height:320px}
 .editor video,.editor .stage img{width:100%;max-height:calc(100vh - 48px);aspect-ratio:9/16;object-fit:contain;display:block}
 .editor .panel{padding:22px;overflow:auto;display:flex;flex-direction:column;gap:14px}
 .editor h3{font-size:13px;font-weight:600;color:var(--dim);margin-top:6px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:50}
-.toast{background:var(--frame);color:var(--frame-text);border:1px solid var(--frame-2);border-radius:var(--r);padding:12px 16px;max-width:380px;animation:rise .2s ease;display:flex;gap:10px;align-items:center;font-weight:500}
+.toast{background:#111724;color:#fff;border:1px solid var(--line-2);border-radius:var(--r);padding:12px 16px;max-width:380px;animation:rise .2s ease;display:flex;gap:10px;align-items:center;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
 .toast::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--brand);flex:none}
-.toast.ok::before{background:#3DDC97}.toast.bad::before{background:#FF6B78}
+.toast.ok::before{background:#10B981}.toast.bad::before{background:#EF4444}
 .toast .rep{margin-left:auto;border:0;background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:12px;font-weight:600;padding:3px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
 .toast .rep:hover{background:rgba(255,255,255,.18)}
 .err .rep{margin-left:8px;border:0;background:transparent;color:inherit;font:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0}
 
-.ntoast{display:flex;gap:12px;align-items:flex-start;width:340px;max-width:calc(100vw - 40px);padding:12px 12px 12px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);color:var(--text);cursor:pointer;text-align:left;
+.ntoast{display:flex;gap:12px;align-items:flex-start;width:340px;max-width:calc(100vw - 40px);padding:12px 12px 12px 12px;border-radius:12px;background:#111724;border:1px solid var(--line-2);color:#fff;cursor:pointer;text-align:left;
   animation:ntin .35s cubic-bezier(.2,.8,.2,1) both;transition:background-color .15s ease}
-.ntoast:hover{background:#FFFBF8}
+.ntoast:hover{background:#162032}
 .ntoast.out{animation:ntout .25s ease forwards}
-.ntoast i{flex:none;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand-deep)}
+.ntoast i{flex:none;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand)}
 .ntoast i svg{width:17px;height:17px}
 .ntoast.k-expiry i{background:#FFF1DC;color:#9A5B12}.ntoast.k-post i{background:#FDECEC;color:#C53030}.ntoast.k-live i{background:#FDECEC;color:#E5323F}.ntoast.k-clips i{background:#E9F6EE;color:#1F7A4D}
 .ntoast .tx{flex:1;min-width:0}
-.ntoast b{display:block;font-size:13px;font-weight:600;color:var(--brand-ink);line-height:1.35}
+.ntoast b{display:block;font-size:13px;font-weight:600;color:#fff;line-height:1.35}
 .ntoast span{display:block;font-size:12px;color:var(--dim);margin-top:2px;overflow-wrap:anywhere}
 .ntoast .x{flex:none;width:22px;height:22px;border:0;border-radius:6px;background:transparent;color:var(--faint);display:grid;place-items:center;cursor:pointer}
 .ntoast .x:hover{background:var(--muted);color:var(--text)}
@@ -635,12 +641,12 @@ dialog::backdrop{background:rgba(14,12,11,.42);animation:fadein .16s ease}
 .me-btn:hover,.me-btn[aria-expanded=true]{background:var(--frame-2)}
 .bell{position:relative}
 .bell .dotn{position:absolute;top:2px;right:1px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#E5323F;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid var(--frame)}
-.pop{position:fixed;z-index:60;left:248px;bottom:12px;width:360px;max-width:calc(100vw - 24px);max-height:min(520px,calc(100vh - 100px));display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+.pop{position:fixed;z-index:60;left:248px;bottom:12px;width:360px;max-width:calc(100vw - 24px);max-height:min(520px,calc(100vh - 100px));display:flex;flex-direction:column;background:#0E1420;border:1px solid var(--line-2);border-radius:14px;overflow:hidden;
   opacity:0;transform:translateY(8px);transition:opacity .18s ease,transform .18s ease}
 .pop.open{opacity:1;transform:none}
 @media (max-width:900px){.pop{left:12px!important;bottom:74px!important;z-index:80}}
 .pop-head{display:flex;align-items:center;gap:8px;padding:14px 16px 10px}
-.pop-head h3{font-size:15px;color:var(--brand-ink);flex:1}
+.pop-head h3{font-size:15px;color:#fff;flex:1}
 .pop-head button{border:0;background:transparent;color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;padding:4px 6px;border-radius:6px}
 .pop-head button:hover{color:var(--brand-ink);background:var(--muted)}
 .pop-list{overflow-y:auto;padding:0 6px 6px;scrollbar-width:thin}
@@ -813,6 +819,60 @@ dialog[open]{animation:fadein .16s ease}
   .ai-big{font-size:24px}
 }
 
+/* Clip Editing Studio Modal & Timeline Scrubber */
+#clipdlg{width:1280px;max-width:96vw;height:92vh;max-height:92vh;background:#0d1117;color:#f0f6fc;border:1px solid #30363d;border-radius:16px;box-shadow:0 30px 90px rgba(0,0,0,0.8);padding:0;overflow:hidden}
+#clipdlg::backdrop{background:rgba(5,7,10,0.78);backdrop-filter:blur(5px)}
+.editor{display:grid;grid-template-columns:1fr 390px;height:100%;max-height:100%;overflow:hidden;background:#0d1117}
+@media(max-width:960px){.editor{grid-template-columns:1fr;overflow-y:auto;height:auto;max-height:92vh}}
+
+.editor-main{display:flex;flex-direction:column;height:100%;background:#090d13;border-right:1px solid #21262d;min-width:0;overflow:hidden}
+.editor-main-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#161b22;border-bottom:1px solid #21262d;gap:12px}
+.editor-stage-wrap{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:#030508;overflow:hidden;padding:14px;user-select:none}
+.stage-169-canvas{position:relative;width:100%;max-height:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center}
+.stage-169-canvas video{width:100%;height:100%;object-fit:contain;display:block}
+.stage-169-canvas img{width:100%;height:100%;object-fit:contain;display:block}
+
+/* Highlighted 9:16 Dotted Clipping Box with Vignette Shade */
+.box-clip-916{position:absolute;box-sizing:border-box;border:2.5px dashed #FF9900;box-shadow:0 0 0 9999px rgba(0,0,0,0.65);cursor:move;touch-action:none;z-index:10;pointer-events:auto;transition:border-color .15s ease}
+.box-clip-tag{background:#FF9900;color:#000;font-size:10px;font-weight:800;padding:3px 7px;border-radius:0 0 4px 0;width:fit-content;letter-spacing:0.5px;text-transform:uppercase;pointer-events:none}
+
+/* Facecam Box */
+.box-facecam-169{position:absolute;box-sizing:border-box;border:2.5px solid #00F0FF;background:rgba(0,240,255,0.22);box-shadow:0 0 16px rgba(0,240,255,0.45);cursor:move;touch-action:none;z-index:15}
+.box-fc-tag{background:#00F0FF;color:#000;font-size:10px;font-weight:800;padding:3px 7px;border-radius:0 0 4px 0;width:fit-content;letter-spacing:0.5px;text-transform:uppercase;pointer-events:none}
+
+.box-hdl{position:absolute;width:10px;height:10px;background:#fff;border-radius:2px;box-shadow:0 0 6px rgba(0,0,0,0.9)}
+.box-clip-916 .box-hdl{border:1.5px solid #FF9900}
+.box-facecam-169 .box-hdl{border:1.5px solid #00F0FF}
+.box-hdl.tl{top:-5px;left:-5px;cursor:nwse-resize}
+.box-hdl.tr{top:-5px;right:-5px;cursor:nesw-resize}
+.box-hdl.bl{bottom:-5px;left:-5px;cursor:nesw-resize}
+.box-hdl.br{bottom:-5px;right:-5px;cursor:nwse-resize}
+
+/* Timeline Scrubber */
+.editor-timeline{background:#161b22;border-top:1px solid #21262d;padding:12px 18px 16px;display:flex;flex-direction:column;gap:10px}
+.timeline-info-row{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:600;color:#8b949e}
+.timeline-time-badge{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;background:#0d1117;padding:3px 8px;border-radius:6px;border:1px solid #30363d;color:#f0f6fc}
+.timeline-scrubber-track{position:relative;width:100%;height:38px;background:#0d1117;border-radius:6px;cursor:pointer;overflow:visible;user-select:none;touch-action:none;border:1px solid #30363d}
+.timeline-clip-range{position:absolute;top:0;bottom:0;background:rgba(255,153,0,0.28);border-top:2px solid #FF9900;border-bottom:2px solid #FF9900;pointer-events:none}
+.timeline-handle{position:absolute;top:-4px;bottom:-4px;width:16px;background:#FF9900;border-radius:4px;cursor:ew-resize;z-index:25;box-shadow:0 0 8px rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;color:#000;font-size:11px;font-weight:900}
+.timeline-handle.start{transform:translateX(-100%);border-radius:4px 0 0 4px}
+.timeline-handle.end{border-radius:0 4px 4px 0}
+.timeline-playhead{position:absolute;top:-8px;bottom:-4px;width:3px;background:#00F0FF;z-index:30;box-shadow:0 0 8px #00F0FF;pointer-events:none}
+.timeline-playhead::before{content:"";position:absolute;top:0;left:-5px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #00F0FF}
+.timeline-controls-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.timeline-btn-group{display:flex;align-items:center;gap:6px}
+.tl-btn{background:#21262d;border:1px solid #30363d;color:#f0f6fc;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s ease}
+.tl-btn:hover{background:#30363d;border-color:#8b949e}
+.tl-btn.primary{background:#FF9900;color:#000;border-color:#FF9900;font-weight:700}
+.tl-btn.primary:hover{background:#ffaa22}
+.tl-btn.sm{padding:4px 8px;font-size:11px}
+
+/* Right Panel within Editor */
+.editor .panel{padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;background:#161b22;border-left:1px solid #21262d;scrollbar-width:thin}
+.editor .panel h3{font-size:13px;font-weight:600;color:#8b949e;margin-top:4px}
+.editor .panel label.f{color:#8b949e}
+.editor .panel input, .editor .panel select, .editor .panel textarea{background:#0d1117;color:#f0f6fc;border:1px solid #30363d}
+
 /* Dual Layer & Area Selection (Facecam & Game) */
 .area-editor{background:var(--card,#1a1a1a);border:1px solid var(--line,#333);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;margin:8px 0}
 .area-editor-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600}
@@ -869,6 +929,7 @@ dialog[open]{animation:fadein .16s ease}
 </div>
 <dialog id="clipdlg"></dialog>
 <dialog id="formdlg"></dialog>
+<dialog id="aikey_dlg"></dialog>
 <input type="file" id="file" accept="video/*" multiple hidden>
 <div id="toasts" role="status" aria-live="polite"></div>
 <div class="pop" id="bellpop" role="dialog" aria-label="Notifications" hidden></div>
@@ -880,6 +941,13 @@ dialog[open]{animation:fadein .16s ease}
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtTime = sec => {
+  if (sec == null || isNaN(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  const ds = Math.floor((sec % 1) * 10);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${ds}`;
+};
 const I = {
  "github": "<path fill-rule=\"evenodd\" transform=\"scale(16)\" d=\"M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z\"/>",
  "instagram": "<rect x=\"32\" y=\"32\" width=\"192\" height=\"192\" rx=\"56\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"18\"/><circle cx=\"128\" cy=\"128\" r=\"42\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"18\"/><circle cx=\"184\" cy=\"72\" r=\"13\"/>",
@@ -1318,10 +1386,14 @@ function drawShell() {  const nav = (v, icon, label, extra = "") => `<button cla
     act = c.live_job ? `<button class="btn danger" data-act="stoplive" data-j="${esc(c.live_job)}">${ic("stop")}Stop recording</button>`
                      : `<button class="btn primary" data-act="golive"><span class="rdot"></span>${liveOn(c).length ? "Record live stream" : "Start recording"}</button>`;
   }
+  const aiKeyBtn = `<button class="btn" data-act="open_aikey" style="background:rgba(0,240,255,0.12);border:1px solid #00F0FF;color:#00F0FF;font-weight:700">⚡ Set AI Key</button>`;
   if (S.view === "overview" || S.view === "library") {
     const L = S.status.links || {};
-    act = (L.repo ? `<a class="btn" href="${esc(L.repo)}" target="_blank" rel="noopener" title="Star ClipCut on GitHub">${ic("github")}<span>Star<span class="long"> on GitHub</span></span></a>` : "")
+    act = aiKeyBtn
+        + (L.repo ? `<a class="btn" href="${esc(L.repo)}" target="_blank" rel="noopener" title="Star ClipCut on GitHub">${ic("github")}<span>Star<span class="long"> on GitHub</span></span></a>` : "")
         + (L.follow ? `<a class="btn primary" href="${esc(L.follow)}" target="_blank" rel="noopener" title="Follow the maker of ClipCut on Instagram">${ic("instagram")}Follow me</a>` : "");
+  } else if (!act) {
+    act = aiKeyBtn;
   }
   const me = S.status.user;
   const kk = S.status.ai;
@@ -1417,64 +1489,25 @@ function drawAdd(variant) {
         ${choice("o_style", Object.entries(S.status.styles).map(([k, v]) => ({v:k, label:v, prev:capPrev(k)})), c?.style ?? "bounce", c?.captions === false)}</div>
       <div class="ob"><div class="ot">Layout</div>${choice("o_layout", Object.entries(S.status.layouts).map(([k, v]) => ({v:k, label:LAYOUT_SHORT[k] || v, title:v, prev:`<span class="lay-prev ${esc(k)}"><span class="ph"><i></i></span></span>`})), c?.layout ?? "gameplay")}</div>
 
-      <!-- Gaming Video Dual Layer Setup (Facecam & Game) -->
-      <div class="ob wide" id="opt_gaming_areas" style="display:flex;flex-direction:column;gap:12px;background:var(--card,#1e1e1e);border:1px solid var(--line,#3a3a3a);border-radius:10px;padding:16px;margin-top:6px">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <div class="ot" style="margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">
-            🎮 Gaming Dual-Layer Setup (Facecam & Main Game)
+      <!-- Gaming Dual-Layer & Timeline Editor Trigger -->
+      <div class="ob wide" id="opt_gaming_toggle_box" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:var(--card,#1a1e24);border:1px solid #30363d;border-radius:10px;padding:14px;margin-top:6px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:38px;height:38px;border-radius:8px;background:rgba(255,153,0,0.15);color:#FF9900;display:grid;place-items:center;font-size:18px">
+            🎮
           </div>
-          <span style="font-size:11px;color:#00F0FF;font-weight:600;background:rgba(0,240,255,0.1);padding:3px 8px;border-radius:4px;border:1px solid rgba(0,240,255,0.3)">Layer 1: Facecam · Layer 2: Main Game</span>
-        </div>
-        
-        <div style="display:grid;grid-template-columns:1fr 140px;gap:16px;align-items:start">
-          <div style="display:flex;flex-direction:column;gap:12px">
-            <div>
-              <div style="font-size:11.5px;font-weight:600;margin-bottom:8px;color:var(--dim)">Facecam Card Orientation Preset:</div>
-              <div class="area-btns" id="opt_orient_btns">
-                <button type="button" class="area-btn active" data-opt-pos="top_center">⭐ Top-Center (Reference Style)</button>
-                <button type="button" class="area-btn" data-opt-pos="top_right">Top-Right Corner</button>
-                <button type="button" class="area-btn" data-opt-pos="top_left">Top-Left Corner</button>
-                <button type="button" class="area-btn" data-opt-pos="split">Split Screen</button>
-              </div>
+          <div>
+            <div style="font-weight:700;font-size:13.5px;color:var(--text,#f0f6fc);display:flex;align-items:center;gap:8px">
+              Gaming Dual-Layer & Timeline Studio
+              <span id="opt_editor_status_badge" style="font-size:10.5px;color:#00F0FF;background:rgba(0,240,255,0.12);padding:2px 7px;border-radius:4px;border:1px solid rgba(0,240,255,0.3)">Areas Configured</span>
             </div>
-
-            <div style="display:flex;flex-direction:column;gap:8px;background:var(--bg,#121212);padding:12px;border-radius:8px;border:1px solid var(--line,#2a2a2a)">
-              <div class="area-slider">
-                <span>Facecam Size</span>
-                <input type="range" id="opt_fc_size" min="300" max="960" step="20" value="760">
-                <span id="opt_txt_fc_size">760px</span>
-              </div>
-              <div class="area-slider">
-                <span>Vertical Y</span>
-                <input type="range" id="opt_fc_y" min="20" max="900" step="10" value="120">
-                <span id="opt_txt_fc_y">120px</span>
-              </div>
+            <div style="font-size:11.5px;color:var(--dim,#8b949e)">
+              Scrub video timeline, set Start/End clip range & place Facecam and 9:16 Game crop placeholders
             </div>
-
-            <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--dim)">
-              <span>🟢 <b>Foreground Layer:</b> Floating webcam with rounded corners</span>
-              <span>🟣 <b>Background Layer:</b> Main gameplay vertical fill</span>
-            </div>
-          </div>
-
-          <!-- 9:16 Mockup Preview -->
-          <div class="mockup-916-wrap">
-            <div style="font-size:11px;font-weight:700;color:var(--dim)">9:16 Preview</div>
-            <div class="area-mockup-916" id="opt_mockup_916" style="width:140px">
-              <div class="mock-bg" style="background:#222;display:flex;align-items:center;justify-content:center;color:#777;font-size:10px;font-weight:700">
-                MAIN GAME
-              </div>
-              <div class="mock-fc" id="opt_mock_fc" style="left:21px;top:15px;width:98px;height:55px;border-radius:6px">
-                Facecam
-              </div>
-              <div class="mock-hook" id="opt_mock_hook" style="top:76px;font-size:6px">
-                I FOUND BIGFOOT IN GTA 6 🦧
-              </div>
-              <div class="mock-caps">ANIMATED CAPTIONS</div>
-            </div>
-            <div style="font-size:9.5px;color:var(--dim);text-align:center">Hook badge under Facecam</div>
           </div>
         </div>
+        <button type="button" class="btn primary" data-act="open_source_editor" style="background:#FF9900;color:#000;font-weight:700;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px">
+          ✂️ Open Timeline & Area Editor
+        </button>
       </div>
       <div class="ob"><div class="ot">Video quality</div><input type="hidden" id="o_quality" value="720"><div class="seg" role="group" aria-label="Video quality">
         <button type="button" data-seg="o_quality" data-v="720" aria-pressed="true">720p<small>Fast</small></button>
@@ -2300,14 +2333,40 @@ async function drawSettings() {
 }
 async function saveSettings() { const d = {}; $$("#sform [data-s]").forEach(i => d[i.dataset.s] = i.value); await send("/api/settings", d, "PUT"); }
 
-/* ============================================================ clip editor */
+/* ============================================================ clip & video studio editor */
+function openSourceEditor() {
+  D.isSource = true;
+  D.sig = "";
+  D.mode = "editor";
+  D.jid = S.jobs[0]?.id || null;
+  D.cid = null;
+  D.facecam = S.default_facecam ? [...S.default_facecam] : [1360, 40, 520, 320];
+  D.game_area = S.default_game_area ? [...S.default_game_area] : [656, 0, 608, 1080];
+  D.facecam_pos = S.default_facecam_pos ? [...S.default_facecam_pos] : [160, 120, 760, 440];
+  
+  const fromMin = Number($("#o_from")?.value) || 0;
+  const toMin = Number($("#o_to")?.value) || (fromMin + 0.5);
+  D.custom_clip = {
+    start: Math.round(fromMin * 60 * 10) / 10,
+    end: Math.round(toMin * 60 * 10) / 10,
+    hook: "VIRAL MOMENT 🔥",
+    captions: true,
+    style: "bounce",
+    layout: "gameplay"
+  };
+  if (D.custom_clip.end <= D.custom_clip.start) D.custom_clip.end = D.custom_clip.start + 30;
+  drawClipDlg(true);
+  $("#clipdlg").showModal();
+}
+
 function openClip(jid, cid) {
+  D.isSource = false;
   D.jid = jid; D.cid = cid; D.sig = "";
+  D.mode = "editor";
   const j = jobOf(jid), c = j?.clips.find(x => x.id === cid);
   D.facecam = c?.facecam ? [...c.facecam] : (j?.facecam ? [...j.facecam] : [1360, 40, 520, 320]);
-  D.game_area = c?.game_area ? [...c.game_area] : (j?.game_area ? [...j.game_area] : [0, 0, 1920, 1080]);
+  D.game_area = c?.game_area ? [...c.game_area] : (j?.game_area ? [...j.game_area] : [656, 0, 608, 1080]);
   D.facecam_pos = c?.facecam_pos ? [...c.facecam_pos] : [160, 120, 760, 440];
-  D.show_areas = (c?.layout === "gameplay" || c?.layout === "split" || !!c?.facecam);
   drawClipDlg(true);
   $("#clipdlg").showModal();
 }
@@ -2315,7 +2374,7 @@ function openClip(jid, cid) {
 function syncAreaDOM() {
   const stage = $("#stage_169");
   if (!stage) return;
-  const sw = stage.clientWidth || 320, sh = stage.clientHeight || 180;
+  const sw = stage.clientWidth || 640, sh = stage.clientHeight || 360;
   const sx = sw / 1920, sy = sh / 1080;
 
   const fc = D.facecam || [1360, 40, 520, 320];
@@ -2329,7 +2388,7 @@ function syncAreaDOM() {
     if (tfc) tfc.textContent = `${Math.round(fc[0])}, ${Math.round(fc[1])} (${Math.round(fc[2])}x${Math.round(fc[3])})`;
   }
 
-  const gm = D.game_area || [0, 0, 1920, 1080];
+  const gm = D.game_area || [656, 0, 608, 1080];
   const bgm = $("#box_game");
   if (bgm) {
     bgm.style.left = (gm[0] * sx) + "px";
@@ -2344,7 +2403,7 @@ function syncAreaDOM() {
   const mfc = $("#mock_fc");
   const mhook = $("#mock_hook");
   if (mock && mfc) {
-    const mw = mock.clientWidth || 125, mh = mock.clientHeight || 222;
+    const mw = mock.clientWidth || 140, mh = mock.clientHeight || 248;
     const smx = mw / 1080, smy = mh / 1920;
     const fp = D.facecam_pos || [160, 120, 760, 440];
     const px = fp[0] * smx, py = fp[1] * smy, pw = fp[2] * smx, ph = fp[3] * smy;
@@ -2391,8 +2450,8 @@ function setupDragBox(el, getCoords, setCoords, stageEl, isMockup) {
   el.addEventListener("pointermove", e => {
     if (!active) return;
     e.preventDefault();
-    const sw = stageEl.clientWidth || (isMockup ? 125 : 320);
-    const sh = stageEl.clientHeight || (isMockup ? 222 : 180);
+    const sw = stageEl.clientWidth || (isMockup ? 140 : 640);
+    const sh = stageEl.clientHeight || (isMockup ? 248 : 360);
     const maxW = isMockup ? 1080 : 1920;
     const maxH = isMockup ? 1920 : 1080;
     const sx = maxW / sw, sy = maxH / sh;
@@ -2442,7 +2501,7 @@ function initAreaSelector() {
   const stage = $("#stage_169");
   if (!stage) return;
   setupDragBox($("#box_facecam"), () => D.facecam || [1360, 40, 520, 320], v => { D.facecam = v; }, stage, false);
-  setupDragBox($("#box_game"), () => D.game_area || [0, 0, 1920, 1080], v => { D.game_area = v; }, stage, false);
+  setupDragBox($("#box_game"), () => D.game_area || [656, 0, 608, 1080], v => { D.game_area = v; }, stage, false);
   const mock = $("#mockup_916");
   if (mock) {
     setupDragBox($("#mock_fc"), () => D.facecam_pos || [160, 120, 760, 440], v => { D.facecam_pos = v; }, mock, true);
@@ -2472,131 +2531,375 @@ function initAreaSelector() {
   requestAnimationFrame(() => syncAreaDOM());
 }
 
+function initTimelineScrubber(j, c) {
+  const track = $("#timeline_track");
+  const vid = $("#edit_src_vid");
+  if (!track) return;
+  const dur = vid?.duration || j?.duration || Math.max(60, (c.end || 30) + 10);
+
+  function syncUI() {
+    const startPct = Math.min(100, Math.max(0, ((c.start || 0) / dur) * 100));
+    const endPct = Math.min(100, Math.max(0, ((c.end || dur) / dur) * 100));
+    const r = $("#tl_clip_range"), hs = $("#tl_handle_start"), he = $("#tl_handle_end");
+    if (r) {
+      r.style.left = startPct + "%";
+      r.style.width = Math.max(0, endPct - startPct) + "%";
+    }
+    if (hs) hs.style.left = startPct + "%";
+    if (he) he.style.left = endPct + "%";
+
+    const tr = $("#txt_clip_range"), td = $("#txt_clip_dur");
+    if (tr) tr.textContent = `[${fmtTime(c.start)} - ${fmtTime(c.end)}]`;
+    if (td) td.textContent = Math.max(0, (c.end || 0) - (c.start || 0)).toFixed(1) + "s";
+
+    const is_ = $('input[data-f="start"]'), ie_ = $('input[data-f="end"]');
+    if (is_) is_.value = c.start;
+    if (ie_) ie_.value = c.end;
+  }
+  syncUI();
+
+  if (vid) {
+    vid.addEventListener("loadedmetadata", () => {
+      const d = vid.duration || j?.duration || 60;
+      const td = $("#txt_dur_time");
+      if (td) td.textContent = fmtTime(d);
+      if (c.start) vid.currentTime = c.start;
+      syncUI();
+    });
+    vid.addEventListener("timeupdate", () => {
+      const d = vid.duration || j?.duration || 60;
+      const cur = vid.currentTime;
+      const tc = $("#txt_curr_time");
+      if (tc) tc.textContent = fmtTime(cur);
+      const pct = Math.min(100, Math.max(0, (cur / d) * 100));
+      const ph = $("#tl_playhead");
+      if (ph) ph.style.left = pct + "%";
+
+      const chkLoop = $("#chk_loop_clip");
+      if (chkLoop && chkLoop.checked && cur >= (c.end || d)) {
+        vid.currentTime = c.start || 0;
+      }
+    });
+    vid.addEventListener("play", () => {
+      const pbtn = $("#btn_tl_play");
+      if (pbtn) pbtn.innerHTML = "⏸ Pause";
+    });
+    vid.addEventListener("pause", () => {
+      const pbtn = $("#btn_tl_play");
+      if (pbtn) pbtn.innerHTML = "▶ Play";
+    });
+    vid.addEventListener("error", () => {
+      const fb = $("#edit_fallback_img");
+      if (fb) fb.style.display = "block";
+      vid.style.display = "none";
+    });
+  }
+
+  // Click track to seek
+  track.addEventListener("pointerdown", e => {
+    if (e.target.classList.contains("timeline-handle")) return;
+    const rect = track.getBoundingClientRect();
+    const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const targetTime = pct * dur;
+    if (vid) vid.currentTime = targetTime;
+    const ph = $("#tl_playhead");
+    if (ph) ph.style.left = (pct * 100) + "%";
+    const tc = $("#txt_curr_time");
+    if (tc) tc.textContent = fmtTime(targetTime);
+  });
+
+  // Start handle drag
+  const hs = $("#tl_handle_start");
+  if (hs) {
+    let active = false;
+    hs.addEventListener("pointerdown", e => {
+      e.preventDefault(); e.stopPropagation();
+      active = true; hs.setPointerCapture(e.pointerId);
+    });
+    hs.addEventListener("pointermove", e => {
+      if (!active) return;
+      const rect = track.getBoundingClientRect();
+      const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      let t = Math.round(pct * dur * 10) / 10;
+      t = Math.max(0, Math.min(c.end - 0.5, t));
+      c.start = t;
+      if (vid) vid.currentTime = t;
+      syncUI();
+    });
+    const onEnd = e => { if (active) { active = false; try { hs.releasePointerCapture(e.pointerId); } catch {} } };
+    hs.addEventListener("pointerup", onEnd);
+    hs.addEventListener("pointercancel", onEnd);
+  }
+
+  // End handle drag
+  const he = $("#tl_handle_end");
+  if (he) {
+    let active = false;
+    he.addEventListener("pointerdown", e => {
+      e.preventDefault(); e.stopPropagation();
+      active = true; he.setPointerCapture(e.pointerId);
+    });
+    he.addEventListener("pointermove", e => {
+      if (!active) return;
+      const rect = track.getBoundingClientRect();
+      const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      let t = Math.round(pct * dur * 10) / 10;
+      t = Math.max(c.start + 0.5, Math.min(dur, t));
+      c.end = t;
+      if (vid) vid.currentTime = t;
+      syncUI();
+    });
+    const onEnd = e => { if (active) { active = false; try { he.releasePointerCapture(e.pointerId); } catch {} } };
+    he.addEventListener("pointerup", onEnd);
+    he.addEventListener("pointercancel", onEnd);
+  }
+}
+
 function drawClipDlg(full) {
-  const j = jobOf(D.jid), c = j?.clips.find(x => x.id === D.cid), dlg = $("#clipdlg");
+  const isSrc = D.isSource;
+  const j = D.jid ? jobOf(D.jid) : (S.jobs[0] || null);
+  const c = isSrc ? (D.custom_clip || {start:0, end:30, hook:"VIRAL MOMENT 🔥", captions:true, style:"bounce", layout:"gameplay"})
+                 : j?.clips.find(x => x.id === D.cid);
+  const dlg = $("#clipdlg");
   if (!c) { if (dlg.open) dlg.close(); return; }
-  const m = `/media/${j.id}/`, sig = c.status + c.version;
-  const stage = c.status === "done" ? `<video src="${m}${esc(c.file)}?v=${c.version}" poster="${m}${esc(c.cover)}?v=${c.version}" controls autoplay playsinline></video>`
+
+  const m = j ? `/media/${j.id}/` : "";
+  const sig = isSrc ? "source" : (c.status + c.version);
+  const videoSrc = isSrc ? (j ? `/media/${j.id}/source/video` : "")
+                         : `/media/${j.id}/clips/${c.id}/source/video`;
+  const fallbackImgSrc = j ? `/api/jobs/${j.id}/frame?t=${c.start || 2}` : "";
+
+  const stagePreview = c.status === "done" ? `<video src="${m}${esc(c.file)}?v=${c.version}" poster="${m}${esc(c.cover)}?v=${c.version}" controls autoplay playsinline style="width:100%;height:100%;object-fit:contain"></video>`
     : c.status === "error" ? `<div class="err" style="padding:20px;text-align:center">${esc(c.error || "Could not make this clip.")}</div>`
     : `<span class="making">${c.status === "rendering" ? "Making this clip…" : "Waiting its turn…"}</span>`;
-  if (full) {
-    dlg.innerHTML = `<div class="editor"><div class="stage" id="stage">${stage}</div>
-      <div class="panel">
-        <div class="job-head" style="margin:0"><div><span class="badge ${scoreCls(c.score)}" style="position:static">${c.judges ? "Words " + c.judges.words + (c.judges.reaction ? " · Reaction " + c.judges.reaction : "") : c.score ? "Score " + c.score : "Clipped by hand"}</span>
-          <p class="sub" style="margin-top:8px">${esc(c.reason || "")}</p></div><button class="btn icon ghost" data-act="closedlg" aria-label="Close">${ic("x")}</button></div>
-        <h3>On the video</h3>
-        <label class="f">Big text<input data-f="hook" value="${esc(c.hook)}"></label>
-        <label class="sw"><input type="checkbox" data-f="captions" data-caption-toggle ${c.captions === false ? "" : "checked"}>Generate captions</label>
-        <div class="two"><label class="f">Caption style<select data-f="style" data-caption-style ${c.captions === false ? "disabled" : ""}>${opts(S.status.styles, c.style)}</select></label>
-          <label class="f">Layout<select data-f="layout" id="clip_layout_sel">${opts(S.status.layouts, c.layout)}</select></label></div>
 
-        <!-- Dual Layer & Area Selection (Gaming / Facecam) -->
-        <div style="border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:6px;background:var(--bg-card,#181818)">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px">
-              🎮 Dual Layer Areas (Game & Facecam)
-            </span>
-            <button type="button" class="btn sm" data-act="toggle_areas">
-              ${D.show_areas ? "Hide Areas" : "Adjust Areas"}
-            </button>
+  if (full) {
+    dlg.innerHTML = `
+      <div class="editor">
+        <!-- Main Left Video Studio + Timeline Scrubber -->
+        <div class="editor-main">
+          <div class="editor-main-head">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-weight:700;font-size:14px;color:#fff;display:flex;align-items:center;gap:6px">
+                🎬 ${isSrc ? 'Gaming Timeline & Area Studio' : 'Clip Studio'}
+              </span>
+              ${!isSrc ? `<span class="badge ${scoreCls(c.score)}" style="position:static">${c.judges ? "Words " + c.judges.words + (c.judges.reaction ? " · Reaction " + c.judges.reaction : "") : c.score ? "Score " + c.score : "Clip"}</span>` : `<span class="pill ok">Full Source Video</span>`}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button type="button" class="tl-btn ${D.mode === 'editor' ? 'primary' : ''}" data-act="dlg_mode" data-mode="editor">
+                📺 16:9 Full Video (Crop & Facecam)
+              </button>
+              ${!isSrc ? `
+              <button type="button" class="tl-btn ${D.mode === 'preview' ? 'primary' : ''}" data-act="dlg_mode" data-mode="preview">
+                📱 9:16 Vertical Preview
+              </button>` : ''}
+            </div>
           </div>
-          ${D.show_areas ? `
-          <div class="area-editor" id="area_editor_box">
-            <div class="area-editor-head">
-              <span>Source 16:9 Frame (Crop Areas)</span>
-              <div class="area-btns">
-                <button type="button" class="area-btn" data-act="detect_facecam">✨ Auto-Detect Facecam</button>
-                <button type="button" class="area-btn" data-act="reset_game">🎯 Center Game</button>
+
+          <!-- Video View Canvas Wrap -->
+          <div class="editor-stage-wrap" id="stage_wrap">
+            ${D.mode === 'editor' ? `
+            <div class="stage-169-canvas" id="stage_169">
+              <video id="edit_src_vid" preload="auto" playsinline src="${videoSrc}"></video>
+              <img id="edit_fallback_img" src="${fallbackImgSrc}" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+              
+              <!-- Dotted 9:16 Crop Box (Highlighted Region) -->
+              <div class="box-clip-916" id="box_game">
+                <div class="box-clip-tag">✂️ 9:16 Game Area</div>
+                <div class="box-hdl tl" data-hdl="tl"></div>
+                <div class="box-hdl tr" data-hdl="tr"></div>
+                <div class="box-hdl bl" data-hdl="bl"></div>
+                <div class="box-hdl br" data-hdl="br"></div>
+              </div>
+
+              <!-- Facecam Selection Box -->
+              <div class="box-facecam-169" id="box_facecam">
+                <div class="box-fc-tag">📷 Facecam Area</div>
+                <div class="box-hdl tl" data-hdl="tl"></div>
+                <div class="box-hdl tr" data-hdl="tr"></div>
+                <div class="box-hdl bl" data-hdl="bl"></div>
+                <div class="box-hdl br" data-hdl="br"></div>
               </div>
             </div>
-            <div class="area-editor-grid">
+            ` : `
+            <div style="height:100%;aspect-ratio:9/16;display:flex;align-items:center;justify-content:center;background:#000;border-radius:8px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.8)">
+              ${stagePreview}
+            </div>
+            `}
+          </div>
+
+          <!-- Interactive Timeline Scrubber -->
+          <div class="editor-timeline" id="editor_timeline">
+            <div class="timeline-info-row">
               <div>
-                <div class="area-stage-169" id="stage_169">
-                  <img src="/api/jobs/${j.id}/frame?t=${c.start || 2}" alt="Source frame">
-                  <div class="crop-box gm-box" id="box_game">
-                    <span class="crop-tag">Main Game</span>
-                    <div class="crop-hdl tl" data-hdl="tl"></div>
-                    <div class="crop-hdl tr" data-hdl="tr"></div>
-                    <div class="crop-hdl bl" data-hdl="bl"></div>
-                    <div class="crop-hdl br" data-hdl="br"></div>
-                  </div>
-                  <div class="crop-box fc-box" id="box_facecam">
-                    <span class="crop-tag">Facecam</span>
-                    <div class="crop-hdl tl" data-hdl="tl"></div>
-                    <div class="crop-hdl tr" data-hdl="tr"></div>
-                    <div class="crop-hdl bl" data-hdl="bl"></div>
-                    <div class="crop-hdl br" data-hdl="br"></div>
-                  </div>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--dim)">
-                  <span>🟢 <b style="color:#00F0FF">Facecam</b>: <span id="txt_fc_coords"></span></span>
-                  <span>🟣 <b style="color:#C084FC">Game</b>: <span id="txt_gm_coords"></span></span>
-                </div>
+                <span>⏱️ Playhead: </span>
+                <span class="timeline-time-badge" id="txt_curr_time">${fmtTime(c.start || 0)}</span>
+                <span style="color:#64748b;margin:0 4px">/</span>
+                <span class="timeline-time-badge" id="txt_dur_time">${fmtTime(j?.duration || 60)}</span>
               </div>
-              <div class="mockup-916-wrap">
-                <div style="font-size:10.5px;font-weight:600;color:var(--dim)">9:16 Preview</div>
-                <div class="area-mockup-916" id="mockup_916">
-                  <div class="mock-bg" id="mock_bg"><img src="/api/jobs/${j.id}/frame?t=${c.start || 2}" alt=""></div>
-                  <div class="mock-fc" id="mock_fc">Facecam</div>
-                  <div class="mock-hook" id="mock_hook">${esc(c.hook || "TITLE HOOK")}</div>
-                  <div class="mock-caps">CAPTIONS</div>
-                </div>
-                <div style="font-size:9px;color:var(--dim);text-align:center">Drag Facecam card above</div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span>✂️ Clip Range: </span>
+                <span class="timeline-time-badge" style="color:#FF9900;border-color:rgba(255,153,0,0.4)" id="txt_clip_range">
+                  [${fmtTime(c.start)} - ${fmtTime(c.end)}]
+                </span>
+                <span class="timeline-time-badge" style="color:#00F0FF;border-color:rgba(0,240,255,0.4)" id="txt_clip_dur">
+                  ${(Math.max(0, (c.end || 0) - (c.start || 0))).toFixed(1)}s
+                </span>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="tl-btn sm" data-act="detect_facecam" title="Auto-detect facecam with AI in this video frame">
+                  ✨ Auto-Detect Facecam
+                </button>
+                <button type="button" class="tl-btn sm" data-act="reset_game" title="Center 9:16 crop box">
+                  🎯 Center 9:16
+                </button>
               </div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px">
-              <div style="font-size:11px;font-weight:600">Facecam Orientation Presets:</div>
-              <div class="area-btns">
-                <button type="button" class="area-btn active" data-act="pos_top_center">⭐ Top-Center (Ref Style)</button>
-                <button type="button" class="area-btn" data-act="pos_top_right">Top-Right</button>
-                <button type="button" class="area-btn" data-act="pos_top_left">Top-Left</button>
-                <button type="button" class="area-btn" data-act="pos_bottom_right">Bottom-Right</button>
+
+            <!-- Scrubber Track with Range, Handles & Playhead -->
+            <div class="timeline-scrubber-track" id="timeline_track">
+              <div class="timeline-clip-range" id="tl_clip_range"></div>
+              <div class="timeline-handle start" id="tl_handle_start" title="Drag to adjust Start time">[</div>
+              <div class="timeline-handle end" id="tl_handle_end" title="Drag to adjust End time">]</div>
+              <div class="timeline-playhead" id="tl_playhead"></div>
+            </div>
+
+            <!-- Transport Controls -->
+            <div class="timeline-controls-row">
+              <div class="timeline-btn-group">
+                <button type="button" class="tl-btn" data-act="tl_jump_start" title="Jump to Start">⏮ Start</button>
+                <button type="button" class="tl-btn" data-act="tl_seek_back" title="Rewind 5s">⏪ -5s</button>
+                <button type="button" class="tl-btn primary" data-act="tl_toggle_play" id="btn_tl_play" title="Play/Pause">▶ Play</button>
+                <button type="button" class="tl-btn" data-act="tl_seek_fwd" title="Forward 5s">+5s ⏩</button>
+                <button type="button" class="tl-btn" data-act="tl_jump_end" title="Jump to End">End ⏭</button>
               </div>
-              <div class="area-slider">
-                <span>Facecam Size</span>
-                <input type="range" id="sl_fc_size" min="300" max="960" step="20" value="${D.facecam_pos?.[2] || 760}">
-                <span id="txt_fc_size">${D.facecam_pos?.[2] || 760}px</span>
-              </div>
-              <div class="area-slider">
-                <span>Vertical Y</span>
-                <input type="range" id="sl_fc_y" min="20" max="1000" step="10" value="${D.facecam_pos?.[1] || 120}">
-                <span id="txt_fc_y">${D.facecam_pos?.[1] || 120}px</span>
+              <div class="timeline-btn-group">
+                <button type="button" class="tl-btn" data-act="tl_mark_in" title="Set Start to playhead">[ Mark Start</button>
+                <button type="button" class="tl-btn" data-act="tl_mark_out" title="Set End to playhead">] Mark End</button>
+                <label style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#cbd5e1;cursor:pointer;margin-left:6px">
+                  <input type="checkbox" id="chk_loop_clip" checked style="accent-color:#FF9900">
+                  Loop Range
+                </label>
               </div>
             </div>
           </div>
-          ` : ""}
         </div>
 
-        <div class="two"><label class="f">Start (seconds)<input data-f="start" type="number" step="0.5" value="${c.start}"></label>
-          <label class="f">End (seconds)<input data-f="end" type="number" step="0.5" value="${c.end}"></label></div>
-        <h3>Post text</h3>
-        <label class="f">Title<input data-f="title" value="${esc(c.title)}"></label>
-        <label class="f">Description<textarea data-f="description" rows="2">${esc(c.description)}</textarea></label>
-        <button class="btn" data-act="remake">${ic("scissors")}Save and re-make clip</button>
-        <h3>Post it</h3>
-        <div id="dposts" class="row" style="gap:4px"></div>
-        ${S.accounts.length ? `<div class="row">${S.accounts.map(a => `<label class="ck"><input type="checkbox" data-pacc value="${esc(a.id)}">${esc(a.label)} · ${esc(a.name)}</label>`).join("")}</div>
-          <div class="row"><button class="btn primary" data-act="postnow">${ic("send")}Post now</button><button class="btn" data-act="postqueue">Add to queue</button></div>`
-          : `<p class="help">No accounts connected yet. Connect one in Settings.</p>`}
-        <div class="row" style="margin-top:auto;padding-top:8px;border-top:1px solid var(--line)">
-          ${c.status === "done" ? `<a class="btn" href="${m}${esc(c.file)}?download=1">${ic("down")}Download</a>` : ""}
-          <button class="btn" data-act="copy" data-j="${j.id}" data-c="${esc(c.id)}">${ic("copy")}Copy post text</button></div>
-      </div></div>`;
-    if (D.show_areas) {
-      setTimeout(initAreaSelector, 50);
-    }
-    const lSel = $("#clip_layout_sel");
-    if (lSel) {
-      lSel.addEventListener("change", e => {
-        if (e.target.value === "gameplay" || e.target.value === "split") {
-          D.show_areas = true;
-          drawClipDlg(true);
-        }
-      });
-    }
-  } else if (D.sig !== sig) $("#stage").innerHTML = stage;
+        <!-- Right Side Panel -->
+        <div class="panel">
+          <div class="job-head" style="margin:0">
+            <div>
+              <p class="sub" style="margin:0;color:#94a3b8">${isSrc ? "Place Facecam & Game Areas on the 16:9 Video" : esc(c.reason || "Clip options & presets")}</p>
+            </div>
+            <button class="btn icon ghost" data-act="closedlg" aria-label="Close">${ic("x")}</button>
+          </div>
+
+          <!-- Live 9:16 Composite Phone Mockup -->
+          <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700">
+              <span>📱 9:16 Mobile Composite</span>
+              <span style="font-size:10px;color:#00F0FF">Drag Facecam Card Below</span>
+            </div>
+            <div style="display:flex;justify-content:center;padding:4px 0">
+              <div class="area-mockup-916" id="mockup_916" style="width:140px">
+                <div class="mock-bg" id="mock_bg"><img src="${fallbackImgSrc}" alt=""></div>
+                <div class="mock-fc" id="mock_fc">Facecam</div>
+                <div class="mock-hook" id="mock_hook">${esc(c.hook || "TITLE HOOK")}</div>
+                <div class="mock-caps">ANIMATED CAPTIONS</div>
+              </div>
+            </div>
+            <div style="font-size:11px;font-weight:600;color:#94a3b8;margin-top:2px">Facecam Orientation Preset:</div>
+            <div class="area-btns">
+              <button type="button" class="area-btn active" data-act="pos_top_center">⭐ Top-Center (Ref)</button>
+              <button type="button" class="area-btn" data-act="pos_top_right">Top-Right</button>
+              <button type="button" class="area-btn" data-act="pos_top_left">Top-Left</button>
+              <button type="button" class="area-btn" data-act="pos_bottom_right">Bottom-Right</button>
+            </div>
+            <div class="area-slider">
+              <span>Size</span>
+              <input type="range" id="sl_fc_size" min="300" max="960" step="20" value="${D.facecam_pos?.[2] || 760}">
+              <span id="txt_fc_size">${D.facecam_pos?.[2] || 760}px</span>
+            </div>
+            <div class="area-slider">
+              <span>Height Y</span>
+              <input type="range" id="sl_fc_y" min="20" max="1000" step="10" value="${D.facecam_pos?.[1] || 120}">
+              <span id="txt_fc_y">${D.facecam_pos?.[1] || 120}px</span>
+            </div>
+          </div>
+
+          ${isSrc ? `
+            <h3 style="margin-top:8px">Selected Range</h3>
+            <div class="two">
+              <label class="f">Start (seconds)<input data-f="start" type="number" step="0.5" value="${c.start}"></label>
+              <label class="f">End (seconds)<input data-f="end" type="number" step="0.5" value="${c.end}"></label>
+            </div>
+            <button class="btn primary" style="background:#00F0FF;color:#000;font-weight:800;height:44px;margin-top:12px;font-size:14px" data-act="apply_source_areas">
+              💾 Apply & Save Areas to Options
+            </button>
+          ` : `
+            <h3>On the video</h3>
+            <label class="f">Big text (Title Hook)<input data-f="hook" id="input_hook_text" value="${esc(c.hook)}"></label>
+            <label class="sw"><input type="checkbox" data-f="captions" data-caption-toggle ${c.captions === false ? "" : "checked"}>Generate captions</label>
+            <div class="two">
+              <label class="f">Caption style<select data-f="style" data-caption-style ${c.captions === false ? "disabled" : ""}>${opts(S.status.styles, c.style)}</select></label>
+              <label class="f">Layout<select data-f="layout" id="clip_layout_sel">${opts(S.status.layouts, c.layout)}</select></label>
+            </div>
+
+            <div class="two">
+              <label class="f">Start (seconds)<input data-f="start" type="number" step="0.5" value="${c.start}"></label>
+              <label class="f">End (seconds)<input data-f="end" type="number" step="0.5" value="${c.end}"></label>
+            </div>
+
+            <h3>Post text</h3>
+            <label class="f">Title<input data-f="title" value="${esc(c.title)}"></label>
+            <label class="f">Description<textarea data-f="description" rows="2">${esc(c.description)}</textarea></label>
+            
+            <button class="btn primary" style="background:#00F0FF;color:#000;font-weight:800;height:42px;margin-top:6px" data-act="remake">
+              ${ic("scissors")} Save and re-make clip
+            </button>
+
+            <h3>Post it</h3>
+            <div id="dposts" class="row" style="gap:4px"></div>
+            ${S.accounts.length ? `
+              <div class="row">${S.accounts.map(a => `<label class="ck"><input type="checkbox" data-pacc value="${esc(a.id)}">${esc(a.label)} · ${esc(a.name)}</label>`).join("")}</div>
+              <div class="row"><button class="btn primary" data-act="postnow">${ic("send")}Post now</button><button class="btn" data-act="postqueue">Add to queue</button></div>
+            ` : `<p class="help">No accounts connected yet. Connect one in Settings.</p>`}
+            <div class="row" style="margin-top:auto;padding-top:8px;border-top:1px solid #30363d">
+              ${c.status === "done" ? `<a class="btn" href="${m}${esc(c.file)}?download=1">${ic("down")}Download</a>` : ""}
+              <button class="btn" data-act="copy" data-j="${j?.id}" data-c="${esc(c.id)}">${ic("copy")}Copy post text</button>
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+
+    setTimeout(() => {
+      initAreaSelector();
+      initTimelineScrubber(j, c);
+      const inHook = $("#input_hook_text");
+      if (inHook) {
+        inHook.addEventListener("input", e => {
+          const mHook = $("#mock_hook");
+          if (mHook) mHook.textContent = e.target.value || "TITLE HOOK";
+        });
+      }
+      const inStart = $('input[data-f="start"]'), inEnd = $('input[data-f="end"]');
+      if (inStart) {
+        inStart.addEventListener("change", e => {
+          c.start = Number(e.target.value) || 0;
+          initTimelineScrubber(j, c);
+        });
+      }
+      if (inEnd) {
+        inEnd.addEventListener("change", e => {
+          c.end = Number(e.target.value) || 0;
+          initTimelineScrubber(j, c);
+        });
+      }
+    }, 60);
+  }
   D.sig = sig;
-  put($("#dposts"), postPills(c));
+  if (!isSrc && $("#dposts")) put($("#dposts"), postPills(c));
 }
 $("#clipdlg").addEventListener("close", () => { $("#clipdlg").innerHTML = ""; D.jid = null; });
 $("#clipdlg").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
@@ -2910,10 +3213,134 @@ document.addEventListener("click", async e => {
       drawClipDlg(true);
       return;
     }
+    if (a === "open_source_editor") {
+      openSourceEditor();
+      return;
+    }
+    if (a === "apply_source_areas") {
+      S.default_facecam = D.facecam;
+      S.default_game_area = D.game_area;
+      S.default_facecam_pos = D.facecam_pos;
+      const c = D.custom_clip;
+      if (c) {
+        if ($("#o_from")) $("#o_from").value = Math.floor((c.start || 0) / 60);
+        if ($("#o_to")) $("#o_to").value = Math.ceil((c.end || 0) / 60);
+      }
+      const bge = $("#opt_editor_status_badge");
+      if (bge) {
+        bge.innerHTML = `✅ <b>Custom Areas Configured</b> (${D.facecam ? 'Facecam' : 'Default'} + 9:16 Game Crop at ${c ? (c.end - c.start).toFixed(1) + 's' : ''})`;
+        bge.style.display = "block";
+      }
+      $("#clipdlg").close();
+      toast("Custom areas & timeline range saved to options!", "ok");
+      return;
+    }
+    if (a === "dlg_mode") {
+      D.mode = d.mode;
+      drawClipDlg(true);
+      return;
+    }
+    if (a === "open_aikey") {
+      const dlg = $("#aikey_dlg");
+      if (dlg) dlg.showModal();
+      return;
+    }
+    if (a === "close_aikey") {
+      const dlg = $("#aikey_dlg");
+      if (dlg) dlg.close();
+      return;
+    }
+    if (a === "save_quick_aikey") {
+      b.disabled = true;
+      try {
+        const prov = $("#quick_ai_provider").value;
+        const key = $("#quick_ai_key").value.trim();
+        let model = "";
+        if (prov === "gemini") model = "gemini-2.5-flash";
+        else if (prov === "groq") model = "llama-3.3-70b-versatile";
+        else if (prov === "openai") model = "gpt-4o-mini";
+        await send("/api/ai", {provider: prov, key: key, models: model}, "PUT");
+        let ok = null, why = "";
+        try { ok = await send("/api/ai/test"); } catch (err) { why = err.message; }
+        S.status = await api("/api/status");
+        drawShell();
+        $("#aikey_dlg").close();
+        if (ok) toast(`AI Key verified and saved! (${ok.model})`, "ok");
+        else toast(`Key saved, but test failed: ${why}`, "bad");
+      } catch (err) {
+        toast(err.message, "bad");
+      } finally {
+        b.disabled = false;
+      }
+      return;
+    }
+    if (a === "tl_toggle_play") {
+      const vid = $("#edit_src_vid");
+      const btn = $("#btn_tl_play");
+      if (vid) {
+        if (vid.paused) {
+          vid.play().then(() => { if (btn) btn.innerHTML = "⏸ Pause"; }).catch(() => {});
+        } else {
+          vid.pause();
+          if (btn) btn.innerHTML = "▶ Play";
+        }
+      }
+      return;
+    }
+    if (a === "tl_seek_back") {
+      const vid = $("#edit_src_vid");
+      if (vid) vid.currentTime = Math.max(0, vid.currentTime - 5);
+      return;
+    }
+    if (a === "tl_seek_fwd") {
+      const vid = $("#edit_src_vid");
+      if (vid) vid.currentTime = Math.min(vid.duration || 9999, vid.currentTime + 5);
+      return;
+    }
+    if (a === "tl_jump_start") {
+      const vid = $("#edit_src_vid");
+      const c = D.isSource ? D.custom_clip : jobOf(D.jid)?.clips.find(x => x.id === D.cid);
+      if (vid && c) vid.currentTime = c.start || 0;
+      return;
+    }
+    if (a === "tl_jump_end") {
+      const vid = $("#edit_src_vid");
+      const c = D.isSource ? D.custom_clip : jobOf(D.jid)?.clips.find(x => x.id === D.cid);
+      if (vid && c) vid.currentTime = c.end || vid.duration || 0;
+      return;
+    }
+    if (a === "tl_mark_in") {
+      const vid = $("#edit_src_vid");
+      const c = D.isSource ? D.custom_clip : jobOf(D.jid)?.clips.find(x => x.id === D.cid);
+      if (vid && c) {
+        c.start = Math.max(0, Math.min((c.end || vid.duration || 30) - 0.5, Math.round(vid.currentTime * 10) / 10));
+        const inStart = $('input[data-f="start"]');
+        if (inStart) inStart.value = c.start;
+        const j = D.jid ? jobOf(D.jid) : (S.jobs[0] || null);
+        initTimelineScrubber(j, c);
+        toast(`Start set to ${c.start.toFixed(1)}s`, "ok");
+      }
+      return;
+    }
+    if (a === "tl_mark_out") {
+      const vid = $("#edit_src_vid");
+      const c = D.isSource ? D.custom_clip : jobOf(D.jid)?.clips.find(x => x.id === D.cid);
+      if (vid && c) {
+        c.end = Math.min(vid.duration || 9999, Math.max((c.start || 0) + 0.5, Math.round(vid.currentTime * 10) / 10));
+        const inEnd = $('input[data-f="end"]');
+        if (inEnd) inEnd.value = c.end;
+        const j = D.jid ? jobOf(D.jid) : (S.jobs[0] || null);
+        initTimelineScrubber(j, c);
+        toast(`End set to ${c.end.toFixed(1)}s`, "ok");
+      }
+      return;
+    }
     if (a === "detect_facecam") {
       b.disabled = true;
       try {
-        const res = await api(`/api/jobs/${D.jid}/detect-facecam`, {method:"POST"});
+        const jid = D.jid || S.jobs[0]?.id;
+        if (!jid) return toast("Upload a video first to auto-detect facecam", "bad");
+        const res = await api(`/api/jobs/${jid}/detect-facecam`, {method:"POST"});
         if (res.ok && res.facecam) {
           D.facecam = res.facecam;
           syncAreaDOM();
