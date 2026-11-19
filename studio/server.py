@@ -40,9 +40,9 @@ OPEN = ("/api/auth/", "/pub/", "/api/public", "/auth/google/", "/auth/verify", "
 PAGES = {"/": "landing.html", "/login": "auth.html", "/signup": "auth.html", "/reset": "reset.html",
          "/privacy": "legal.html", "/terms": "legal.html", "/acceptable-use": "legal.html"}
 VIDEO_TYPES = {".mp4", ".mov", ".mkv", ".webm", ".m4v", ".ts", ".flv"}
-CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://*.youtube.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-       "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://i.ytimg.com https://*.youtube.com https://*.ytimg.com; media-src 'self' blob: https://*.googlevideo.com; connect-src 'self' https://*.youtube.com https://*.googlevideo.com; "
-       "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.twitch.tv https://player.kick.com; "
+CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://*.youtube.com https://player.twitch.tv; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+       "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://i.ytimg.com https://*.youtube.com https://*.ytimg.com https://static-cdn.jtvnw.net https://*.twitch.tv https://*.kick.com; media-src 'self' blob: https://*.googlevideo.com https://*.twitch.tv; connect-src 'self' https://*.youtube.com https://*.googlevideo.com https://*.twitch.tv https://*.kick.com; "
+       "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.twitch.tv https://clips.twitch.tv https://*.twitch.tv https://player.kick.com https://kick.com; "
        "frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com")
 
 

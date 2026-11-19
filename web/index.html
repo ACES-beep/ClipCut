@@ -1744,9 +1744,21 @@ function takeLink(A, u, input) {
   if (batchUsed(A) >= batchMax()) { A.note = `You can send up to ${batchMax()} videos at a time. Remove one first.`; return drawAtt(); }
   const l = {id: newId(), url: u, state: "wait"};
   A.links.push(l); A.note = null;
+  window._lastLinkedUrl = u;
+  D.linked_url = u;
   if (input) input.value = "";            // the box is free for the next link straight away
   drawAtt();
-  lookUp(u).then(info => { l.state = "ok"; l.info = info; }, e => { l.state = "bad"; l.msg = e.message; }).then(() => {
+  lookUp(u).then(info => {
+    l.state = "ok";
+    l.info = info;
+    window._lastLinkedInfo = info;
+    if (D.linked_url === u) {
+      D.linked_info = info;
+      if (info.duration && D.custom_clip) {
+        D.custom_clip.end = Math.min(info.duration, Math.max((D.custom_clip.start || 0) + 5, 30));
+      }
+    }
+  }, e => { l.state = "bad"; l.msg = e.message; }).then(() => {
     drawAtt();
     if (A.queued && !A.links.some(x => x.state === "wait")) {
       A.queued = false;
@@ -1759,6 +1771,10 @@ function onLink(input) {
   clearTimeout(linkTimer);
   const A = att(), u = input.value.trim();
   if (!u) { A.note = null; return drawAtt(); }
+  if (looksLink(u)) {
+    window._lastLinkedUrl = u;
+    if (!D.linked_url) D.linked_url = u;
+  }
   if (isChannel(u)) { A.note = "That's a channel, not a video. To clip their live streams, add them as a creator and press Start recording."; return drawAtt(); }
   if (!looksLink(u)) { A.note = u.length > 10 ? "Paste a full YouTube, Twitch or Kick video link." : null; return drawAtt(); }
   A.note = null; drawAtt();
@@ -2344,6 +2360,34 @@ function parseYouTubeId(u) {
   return m ? m[1] : null;
 }
 
+function parseTwitchInfo(u) {
+  if (!u) return null;
+  const s = String(u).trim();
+  const mVod = s.match(/(?:twitch\.tv\/videos\/)(\d+)/i);
+  if (mVod) return { type: "video", id: mVod[1] };
+  const mClip = s.match(/(?:clips\.twitch\.tv\/|twitch\.tv\/[^/]+\/clip\/)([\w-]+)/i);
+  if (mClip) return { type: "clip", id: mClip[1] };
+  const mChan = s.match(/(?:twitch\.tv\/)([A-Za-z0-9_]{3,25})/i);
+  if (mChan && !["directory", "videos", "downloads", "settings"].includes(mChan[1].toLowerCase())) {
+    return { type: "channel", id: mChan[1] };
+  }
+  return null;
+}
+
+function parseKickInfo(u) {
+  if (!u) return null;
+  const s = String(u).trim();
+  const mClip = s.match(/kick\.com\/(?:[^/]+\/clips\/|clip\/)([\w-]+)/i) || s.match(/kick\.com\/[^?]+\?clip=([\w-]+)/i);
+  if (mClip) return { type: "clip", id: mClip[1] };
+  const mVod = s.match(/kick\.com\/(?:[^/]+\/videos\/|video\/)([\w-]+)/i);
+  if (mVod) return { type: "video", id: mVod[1] };
+  const mChan = s.match(/kick\.com\/([A-Za-z0-9_]{3,25})/i);
+  if (mChan && !["video", "clip", "categories"].includes(mChan[1].toLowerCase())) {
+    return { type: "channel", id: mChan[1] };
+  }
+  return null;
+}
+
 function ensureYouTubeAPI(cb) {
   if (window.YT && window.YT.Player) return cb();
   const prev = window.onYouTubeIframeAPIReady;
@@ -2356,6 +2400,24 @@ function ensureYouTubeAPI(cb) {
     s.id = "yt_api_script";
     s.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(s);
+  }
+}
+
+function ensureTwitchAPI(cb) {
+  if (window.Twitch && window.Twitch.Player) return cb();
+  if (!document.getElementById("twitch_api_script")) {
+    const s = document.createElement("script");
+    s.id = "twitch_api_script";
+    s.src = "https://player.twitch.tv/js/embed/v1.js";
+    s.onload = () => cb();
+    document.head.appendChild(s);
+  } else {
+    const timer = setInterval(() => {
+      if (window.Twitch && window.Twitch.Player) {
+        clearInterval(timer);
+        cb();
+      }
+    }, 100);
   }
 }
 
@@ -2409,9 +2471,80 @@ function initYouTubePlayer(videoId, startTime, onReadyCb) {
   });
 }
 
+function initTwitchPlayer(info, startTime, onReadyCb) {
+  if (D.twPlayer) {
+    try {
+      const slot = document.getElementById("tw_player_slot");
+      if (slot) slot.innerHTML = "";
+    } catch {}
+    D.twPlayer = null;
+  }
+  const slot = document.getElementById("tw_player_slot");
+  if (!slot) return;
+  slot.innerHTML = "";
+
+  ensureTwitchAPI(() => {
+    try {
+      const hostname = window.location.hostname || "127.0.0.1";
+      const parents = [hostname];
+      if (hostname === "127.0.0.1" && !parents.includes("localhost")) parents.push("localhost");
+
+      const opts = {
+        width: "100%",
+        height: "100%",
+        autoplay: false,
+        parent: parents
+      };
+      if (info.type === "video") opts.video = info.id;
+      else if (info.type === "clip") opts.clip = info.id;
+      else opts.channel = info.id;
+
+      D.twPlayer = new window.Twitch.Player("tw_player_slot", opts);
+      D.twPlayer.addEventListener(window.Twitch.Player.READY, () => {
+        if (startTime) {
+          try { D.twPlayer.seek(startTime); } catch {}
+        }
+        if (onReadyCb) onReadyCb(D.twPlayer);
+      });
+      D.twPlayer.addEventListener(window.Twitch.Player.PLAY, () => {
+        const pbtn = $("#btn_tl_play");
+        if (pbtn) pbtn.innerHTML = "⏸ Pause";
+        D.isPlaying = true;
+      });
+      D.twPlayer.addEventListener(window.Twitch.Player.PAUSE, () => {
+        const pbtn = $("#btn_tl_play");
+        if (pbtn) pbtn.innerHTML = "▶ Play";
+        D.isPlaying = false;
+      });
+    } catch (err) {
+      console.warn("Twitch player init error:", err);
+    }
+  });
+}
+
+function getFirstLinkedMedia() {
+  if (D.linked_url) return { url: D.linked_url, info: D.linked_info };
+  const inpVal = $("#url")?.value?.trim();
+  if (inpVal && looksLink(inpVal)) return { url: inpVal, info: null };
+  const A = typeof att === "function" ? att() : null;
+  const l1 = A?.links?.find(l => l.url);
+  if (l1) return { url: l1.url, info: l1.info };
+  const allDrafts = Object.values(typeof DRAFTS === "object" ? DRAFTS : {});
+  for (const d of allDrafts) {
+    const dl = d?.links?.find(l => l.url);
+    if (dl) return { url: dl.url, info: dl.info };
+  }
+  if (window._lastLinkedUrl) return { url: window._lastLinkedUrl, info: window._lastLinkedInfo };
+  if (S.jobs?.length && S.jobs[0]?.url) return { url: S.jobs[0].url, info: S.jobs[0] };
+  const sess = sessionStorage.getItem("clipcut_link");
+  if (sess) return { url: sess, info: null };
+  return { url: "", info: null };
+}
+
 async function loadStudioUrl(u) {
   if (!u) return toast("Please enter a video URL", "bad");
   D.linked_url = u;
+  window._lastLinkedUrl = u;
   if ($("#url") && !$("#url").value.trim()) {
     $("#url").value = u;
     if (typeof onLink === "function") onLink($("#url"));
@@ -2421,6 +2554,7 @@ async function loadStudioUrl(u) {
     const info = await lookUp(u);
     if (info) {
       D.linked_info = info;
+      window._lastLinkedInfo = info;
       if (info.duration && D.custom_clip) {
         D.custom_clip.end = Math.min(info.duration, Math.max((D.custom_clip.start || 0) + 5, 30));
       }
@@ -2440,12 +2574,12 @@ function openSourceEditor() {
   D.game_area = S.default_game_area ? [...S.default_game_area] : [656, 0, 608, 1080];
   D.facecam_pos = S.default_facecam_pos ? [...S.default_facecam_pos] : [160, 120, 760, 440];
   
-  // Look for any linked URL from the composer
-  const A = typeof att === "function" ? att() : null;
-  const linked = A?.links?.find(l => l.url) || null;
-  const inputUrl = $("#url")?.value?.trim() || "";
-  D.linked_url = linked?.url || inputUrl || D.linked_url || "";
-  D.linked_info = linked?.info || D.linked_info || null;
+  // Auto-read the first link given on the page or in composer
+  const first = getFirstLinkedMedia();
+  if (first.url) {
+    D.linked_url = first.url;
+    if (first.info) D.linked_info = first.info;
+  }
 
   const fromMin = Number($("#o_from")?.value) || 0;
   const toMin = Number($("#o_to")?.value) || (fromMin + 0.5);
@@ -2464,6 +2598,7 @@ function openSourceEditor() {
     lookUp(D.linked_url).then(info => {
       if (info && info.duration) {
         D.linked_info = info;
+        window._lastLinkedInfo = info;
         if (D.custom_clip) {
           D.custom_clip.end = Math.min(info.duration, Math.max(D.custom_clip.start + 5, D.custom_clip.end));
         }
@@ -2472,6 +2607,9 @@ function openSourceEditor() {
         const tr = $("#txt_clip_range"), tcd = $("#txt_clip_dur");
         if (tr && D.custom_clip) tr.textContent = `[${fmtTime(D.custom_clip.start)} - ${fmtTime(D.custom_clip.end)}]`;
         if (tcd && D.custom_clip) tcd.textContent = Math.max(0, D.custom_clip.end - D.custom_clip.start).toFixed(1) + "s";
+        const inEnd = $('input[data-f="end"]');
+        if (inEnd) inEnd.value = D.custom_clip.end;
+        initTimelineScrubber(null, D.custom_clip);
       }
     }).catch(() => {});
   }
@@ -2658,6 +2796,10 @@ function getActivePlayer(vid, c, j) {
         const d = D.ytPlayer.getDuration();
         if (d && !isNaN(d) && d > 0) return d;
       }
+      if (D.twPlayer && typeof D.twPlayer.getDuration === "function") {
+        const d = D.twPlayer.getDuration();
+        if (d && !isNaN(d) && d > 0) return d;
+      }
       if (D.linked_info && D.linked_info.duration) return D.linked_info.duration;
       if (vid && vid.duration && !isNaN(vid.duration) && vid.duration > 0) return vid.duration;
       if (j && j.duration && j.duration > 0) return j.duration;
@@ -2668,6 +2810,10 @@ function getActivePlayer(vid, c, j) {
         const t = D.ytPlayer.getCurrentTime();
         if (t != null && !isNaN(t)) return t;
       }
+      if (D.twPlayer && typeof D.twPlayer.getCurrentTime === "function") {
+        const t = D.twPlayer.getCurrentTime();
+        if (t != null && !isNaN(t)) return t;
+      }
       if (vid && vid.src && vid.currentTime != null && !isNaN(vid.currentTime)) return vid.currentTime;
       return D.currentTime != null ? D.currentTime : (c?.start || 0);
     },
@@ -2675,6 +2821,9 @@ function getActivePlayer(vid, c, j) {
       D.currentTime = t;
       if (D.ytPlayer && typeof D.ytPlayer.seekTo === "function") {
         try { D.ytPlayer.seekTo(t, allowSeekAhead); } catch {}
+      }
+      if (D.twPlayer && typeof D.twPlayer.seek === "function") {
+        try { D.twPlayer.seek(t); } catch {}
       }
       if (vid && vid.src) {
         try { vid.currentTime = t; } catch {}
@@ -2686,6 +2835,9 @@ function getActivePlayer(vid, c, j) {
       if (D.ytPlayer && typeof D.ytPlayer.playVideo === "function") {
         try { D.ytPlayer.playVideo(); } catch {}
       }
+      if (D.twPlayer && typeof D.twPlayer.play === "function") {
+        try { D.twPlayer.play(); } catch {}
+      }
       if (vid && vid.src) {
         try { vid.play().catch(() => {}); } catch {}
       }
@@ -2696,6 +2848,9 @@ function getActivePlayer(vid, c, j) {
     pause: () => {
       if (D.ytPlayer && typeof D.ytPlayer.pauseVideo === "function") {
         try { D.ytPlayer.pauseVideo(); } catch {}
+      }
+      if (D.twPlayer && typeof D.twPlayer.pause === "function") {
+        try { D.twPlayer.pause(); } catch {}
       }
       if (vid && vid.src) {
         try { vid.pause(); } catch {}
@@ -2711,6 +2866,9 @@ function getActivePlayer(vid, c, j) {
     isPlaying: () => {
       if (D.ytPlayer && typeof D.ytPlayer.getPlayerState === "function") {
         return D.ytPlayer.getPlayerState() === (window.YT?.PlayerState?.PLAYING ?? 1);
+      }
+      if (D.twPlayer && typeof D.twPlayer.isPaused === "function") {
+        return !D.twPlayer.isPaused();
       }
       if (vid && vid.src) return !vid.paused;
       return !!D.isPlaying;
@@ -2912,8 +3070,17 @@ function drawClipDlg(full) {
     videoSrc = isSrc ? (j ? `/media/${j.id}/source/video` : "")
                      : `/media/${j.id}/clips/${c.id}/source/video`;
   }
-  const linkUrl = D.linked_url || $("#url")?.value?.trim() || "";
+  const firstLinked = getFirstLinkedMedia();
+  const linkUrl = D.linked_url || $("#url")?.value?.trim() || firstLinked.url || "";
+  if (!D.linked_url && linkUrl) {
+    D.linked_url = linkUrl;
+    if (firstLinked.info && !D.linked_info) D.linked_info = firstLinked.info;
+  }
+
   const ytId = parseYouTubeId(linkUrl);
+  const twInfo = !ytId ? parseTwitchInfo(linkUrl) : null;
+  const kickInfo = (!ytId && !twInfo) ? parseKickInfo(linkUrl) : null;
+  const hasActiveMedia = !!(ytId || twInfo || kickInfo || videoSrc || D.linked_url || (D.linked_info && D.linked_info.duration));
   const fallbackImgSrc = j ? `/api/jobs/${j.id}/frame?t=${c.start || 2}` : "";
 
   const stagePreview = c.status === "done" ? `<video src="${m}${esc(c.file)}?v=${c.version}" poster="${m}${esc(c.cover)}?v=${c.version}" controls autoplay playsinline style="width:100%;height:100%;object-fit:contain"></video>`
@@ -2925,27 +3092,30 @@ function drawClipDlg(full) {
       <div class="editor">
         <!-- Main Left Video Studio + Timeline Scrubber -->
         <div class="editor-main">
-          <div class="editor-main-head">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0">
-              <span style="font-weight:700;font-size:14px;color:#fff;display:flex;align-items:center;gap:6px;white-space:nowrap">
+          <div class="editor-main-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px;background:#0d1117;border-bottom:1px solid #1C2638;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+              <span style="font-weight:800;font-size:15px;color:#fff;display:flex;align-items:center;gap:6px;white-space:nowrap">
                 🎬 ${isSrc ? 'Gaming Timeline & Area Studio' : 'Clip Studio'}
               </span>
-              ${!isSrc ? `<span class="badge ${scoreCls(c.score)}" style="position:static">${c.judges ? "Words " + c.judges.words + (c.judges.reaction ? " · Reaction " + c.judges.reaction : "") : c.score ? "Score " + c.score : "Clip"}</span>` : `<span class="pill ok" style="white-space:nowrap">Full Source Video</span>`}
+              ${!isSrc ? `<span class="badge ${scoreCls(c.score)}" style="position:static">${c.judges ? "Words " + c.judges.words + (c.judges.reaction ? " · Reaction " + c.judges.reaction : "") : c.score ? "Score " + c.score : "Clip"}</span>` : `<span class="pill ok" style="white-space:nowrap;font-weight:700">Full Source Video</span>`}
             </div>
-            <!-- Interactive URL loader in head -->
-            <div style="display:flex;align-items:center;gap:6px;flex:1;max-width:360px;margin:0 8px">
-              <input id="studio_url_inp" type="text" placeholder="YouTube or video link..." value="${esc(linkUrl)}" style="background:#090D14;border:1px solid #1C2638;color:#00F0FF;border-radius:6px;padding:3px 8px;font-size:11px;width:100%;height:28px" aria-label="Linked video URL">
-              <button type="button" class="tl-btn sm" data-act="studio_load_url" style="white-space:nowrap;height:28px;border-color:#00F0FF;color:#00F0FF;font-weight:700" title="Load link to scrub">🔗 Load</button>
+            <!-- Interactive URL loader in head (Wide & Responsive) -->
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:280px;max-width:540px;margin:0 8px">
+              <div style="position:relative;flex:1;display:flex;align-items:center">
+                <span style="position:absolute;left:10px;font-size:12px;opacity:0.7;pointer-events:none">🔗</span>
+                <input id="studio_url_inp" type="text" placeholder="YouTube, Twitch or Kick video link..." value="${esc(linkUrl)}" style="background:#090D14;border:1px solid #1C2638;color:#00F0FF;border-radius:6px;padding:5px 8px 5px 28px;font-size:12px;width:100%;height:32px;box-sizing:border-box" aria-label="Linked video URL">
+              </div>
+              <button type="button" class="tl-btn sm" data-act="studio_load_url" style="white-space:nowrap;height:32px;padding:0 14px;border-color:#00F0FF;color:#00F0FF;font-weight:700" title="Load link to scrub">🔗 Load</button>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <button type="button" class="tl-btn" data-act="studio_load_video" style="border-color:#00F0FF;color:#00F0FF;font-weight:700">
-                📁 Load File
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+              <button type="button" class="tl-btn" data-act="studio_load_video" style="border-color:#1C2638;color:#cbd5e1;font-weight:600;height:32px">
+                📁 Choose File
               </button>
-              <button type="button" class="tl-btn ${D.mode === 'editor' ? 'primary' : ''}" data-act="dlg_mode" data-mode="editor">
-                📺 16:9 Full Video
+              <button type="button" class="tl-btn ${D.mode === 'editor' ? 'primary' : ''}" data-act="dlg_mode" data-mode="editor" style="height:32px">
+                📺 16:9 Canvas
               </button>
               ${!isSrc ? `
-              <button type="button" class="tl-btn ${D.mode === 'preview' ? 'primary' : ''}" data-act="dlg_mode" data-mode="preview">
+              <button type="button" class="tl-btn ${D.mode === 'preview' ? 'primary' : ''}" data-act="dlg_mode" data-mode="preview" style="height:32px">
                 📱 9:16 Preview
               </button>` : ''}
             </div>
@@ -2960,17 +3130,28 @@ function drawClipDlg(full) {
                 <div id="yt_player_slot" style="width:100%;height:100%;"></div>
               </div>
 
+              <!-- Twitch Video Player Container with pointer-events: none -->
+              <div id="tw_player_wrap" style="${twInfo ? 'display:block;' : 'display:none;'}position:absolute;inset:0;width:100%;height:100%;overflow:hidden;z-index:1;pointer-events:none;background:#000;">
+                <div id="tw_player_slot" style="width:100%;height:100%;"></div>
+              </div>
+
+              <!-- Kick Video Player Container with pointer-events: none -->
+              <div id="kick_player_wrap" style="${kickInfo ? 'display:block;' : 'display:none;'}position:absolute;inset:0;width:100%;height:100%;overflow:hidden;z-index:1;pointer-events:none;background:#000;">
+                <iframe id="kick_player_iframe" src="${kickInfo ? `https://player.kick.com/${kickInfo.id}?autoplay=false&muted=false` : ''}" style="width:100%;height:100%;border:none" allowfullscreen></iframe>
+              </div>
+
               <!-- HTML5 Video element -->
-              <video id="edit_src_vid" preload="auto" playsinline src="${videoSrc}" style="${(!ytId && videoSrc) ? 'display:block;' : 'display:none;'}width:100%;height:100%;object-fit:contain;background:#000;"></video>
+              <video id="edit_src_vid" preload="auto" playsinline src="${videoSrc}" style="${(!ytId && !twInfo && !kickInfo && videoSrc) ? 'display:block;' : 'display:none;'}width:100%;height:100%;object-fit:contain;background:#000;"></video>
               <img id="edit_fallback_img" src="${fallbackImgSrc || (D.linked_info?.thumbnail || '')}" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
               
-              <!-- Empty Video Prompt Overlay -->
-              <div class="empty-video-prompt" id="empty_video_prompt" style="${(ytId || videoSrc) ? 'display:none;' : ''}position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(11,15,23,0.92);gap:14px;z-index:20;padding:24px;text-align:center">
+              <!-- Empty Video Prompt Overlay: ONLY shown when literally NO media or link exists -->
+              ${(!hasActiveMedia) ? `
+              <div class="empty-video-prompt" id="empty_video_prompt" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(11,15,23,0.95);gap:14px;z-index:20;padding:24px;text-align:center">
                 <div style="font-size:48px">🎬</div>
                 <h3 style="font-size:18px;font-weight:700;color:#fff;margin:0">Load Video into Studio</h3>
-                <p style="color:#94a3b8;font-size:13px;max-width:440px;margin:0">Paste a YouTube / Video link or select a file to scrub through the video and place your 9:16 Game area and Facecam.</p>
+                <p style="color:#94a3b8;font-size:13px;max-width:440px;margin:0">Paste a YouTube, Twitch or Kick video link to scrub through the video and place your 9:16 Game area and Facecam.</p>
                 <div style="display:flex;gap:8px;width:100%;max-width:420px">
-                  <input id="studio_prompt_url_inp" type="text" placeholder="Paste YouTube link here..." style="background:#090D14;border:1px solid #1C2638;color:#00F0FF;border-radius:6px;padding:6px 12px;font-size:13px;flex:1">
+                  <input id="studio_prompt_url_inp" type="text" placeholder="Paste YouTube, Twitch, Kick link..." style="background:#090D14;border:1px solid #1C2638;color:#00F0FF;border-radius:6px;padding:6px 12px;font-size:13px;flex:1">
                   <button type="button" class="btn primary" data-act="studio_load_prompt_url" style="background:#00F0FF;color:#000;font-weight:800;padding:0 16px;font-size:13px;border-radius:6px;cursor:pointer">
                     🔗 Load
                   </button>
@@ -2981,7 +3162,7 @@ function drawClipDlg(full) {
                   </button>
                   <span style="font-size:11px;color:#64748b">or drag & drop video file here</span>
                 </div>
-              </div>
+              </div>` : ''}
               <input type="file" id="studio_video_file_input" accept="video/*" style="display:none">
 
               <!-- Dotted 9:16 Crop Box (Highlighted Region) -->
@@ -3159,7 +3340,7 @@ function drawClipDlg(full) {
       if (ytId) {
         initYouTubePlayer(ytId, c.start || 0, (playerInstance) => {
           initTimelineScrubber(j, c);
-          const dur = playerInstance.getDuration();
+          const dur = playerInstance.getDuration ? playerInstance.getDuration() : 0;
           if (dur && dur > 0) {
             if (!c.end || c.end > dur || c.end === 30) {
               c.end = Math.min(dur, Math.max((c.start || 0) + 5, 30));
@@ -3169,6 +3350,25 @@ function drawClipDlg(full) {
             const tr = $("#txt_clip_range"), tcd = $("#txt_clip_dur");
             if (tr) tr.textContent = `[${fmtTime(c.start)} - ${fmtTime(c.end)}]`;
             if (tcd) tcd.textContent = Math.max(0, c.end - c.start).toFixed(1) + "s";
+            const inEnd = $('input[data-f="end"]');
+            if (inEnd) inEnd.value = c.end;
+          }
+        });
+      } else if (twInfo) {
+        initTwitchPlayer(twInfo, c.start || 0, (playerInstance) => {
+          initTimelineScrubber(j, c);
+          const dur = playerInstance.getDuration ? playerInstance.getDuration() : 0;
+          if (dur && dur > 0) {
+            if (!c.end || c.end > dur || c.end === 30) {
+              c.end = Math.min(dur, Math.max((c.start || 0) + 5, 30));
+            }
+            const td = $("#txt_dur_time");
+            if (td) td.textContent = fmtTime(dur);
+            const tr = $("#txt_clip_range"), tcd = $("#txt_clip_dur");
+            if (tr) tr.textContent = `[${fmtTime(c.start)} - ${fmtTime(c.end)}]`;
+            if (tcd) tcd.textContent = Math.max(0, c.end - c.start).toFixed(1) + "s";
+            const inEnd = $('input[data-f="end"]');
+            if (inEnd) inEnd.value = c.end;
           }
         });
       }
@@ -3208,6 +3408,10 @@ function drawClipDlg(full) {
             }
             const ytWrap = $("#yt_player_wrap");
             if (ytWrap) ytWrap.style.display = "none";
+            const twWrap = $("#tw_player_wrap");
+            if (twWrap) twWrap.style.display = "none";
+            const kickWrap = $("#kick_player_wrap");
+            if (kickWrap) kickWrap.style.display = "none";
             const prm = $("#empty_video_prompt");
             if (prm) prm.style.display = "none";
             const mainFile = $("#file");
@@ -3244,6 +3448,10 @@ function drawClipDlg(full) {
             }
             const ytWrap = $("#yt_player_wrap");
             if (ytWrap) ytWrap.style.display = "none";
+            const twWrap = $("#tw_player_wrap");
+            if (twWrap) twWrap.style.display = "none";
+            const kickWrap = $("#kick_player_wrap");
+            if (kickWrap) kickWrap.style.display = "none";
             const prm = $("#empty_video_prompt");
             if (prm) prm.style.display = "none";
             const mainFile = $("#file");
@@ -3289,6 +3497,13 @@ $("#clipdlg").addEventListener("close", () => {
   if (D.ytPlayer && typeof D.ytPlayer.destroy === "function") {
     try { D.ytPlayer.destroy(); } catch {}
     D.ytPlayer = null;
+  }
+  if (D.twPlayer) {
+    try {
+      const slot = document.getElementById("tw_player_slot");
+      if (slot) slot.innerHTML = "";
+    } catch {}
+    D.twPlayer = null;
   }
   $("#clipdlg").innerHTML = "";
   D.jid = null;
