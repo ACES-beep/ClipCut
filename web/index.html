@@ -913,8 +913,13 @@ dialog[open]{animation:fadein .16s ease}
 <body>
 <div class="app" id="app">
   <aside class="side" aria-label="Sidebar">
-    <div class="side-head"><img class="logo" src="/brand/logo-light.svg" alt="ClipCut"><img class="mark" src="/brand/favicon.svg" alt="ClipCut">
-      <button class="icon-btn collapse" data-act="collapse" id="collapseBtn" aria-label="Collapse sidebar"></button></div>
+    <div class="side-head">
+      <div style="display:flex;align-items:center;gap:10px;cursor:pointer" data-act="go" data-v="overview">
+        <img class="logo-cat" src="/brand/cat-mark-cyan.png?v=1795113" style="width:34px;height:34px;object-fit:contain" alt="ClipCut Cat">
+        <span class="logo-text" style="font-size:20px;font-weight:900;letter-spacing:-0.5px;color:#fff;display:flex;align-items:center">Clip<span style="color:#00F0FF">Cut</span></span>
+      </div>
+      <button class="icon-btn collapse" data-act="collapse" id="collapseBtn" aria-label="Collapse sidebar"></button>
+    </div>
     <nav class="nav" id="nav" aria-label="Main"></nav>
     <div class="side-foot" id="foot"></div>
   </aside>
@@ -2007,7 +2012,7 @@ function drawJobs() {
     list = list.filter(j => j.status !== "live"); }
   if (!list.length) {
     root.querySelectorAll("section").forEach(e => e.remove());
-    if (!$(".empty", root)) root.innerHTML = `<div class="empty"><img src="/brand/favicon.svg" alt=""><b>${cid ? "No clips for this creator yet" : "No videos yet"}</b>${cid ? "Start recording their stream, or paste a link to one of their videos above." : "Paste a link above and the studio will find the best moments and turn them into clips."}</div>`;
+    if (!$(".empty", root)) root.innerHTML = `<div class="empty"><img src="/brand/cat-mark-cyan.png?v=1795113" style="width:48px;height:48px;object-fit:contain;margin-bottom:8px" alt=""><b>${cid ? "No clips for this creator yet" : "No videos yet"}</b>${cid ? "Start recording their stream, or paste a link to one of their videos above." : "Paste a link above and the studio will find the best moments and turn them into clips."}</div>`;
     return;
   }
   $(".empty", root)?.remove();
@@ -2093,7 +2098,7 @@ async function saveCreator(quiet) {
 function drawLog() {
   const c = creator();
   put($("#clog"), c && c.log.length ? `<div class="card"><div class="log">${c.log.map(l => `<div><time>${when(l.t)}</time><span>${esc(l.msg)}</span></div>`).join("")}</div></div>`
-    : `<div class="empty"><img src="/brand/favicon.svg" alt=""><b>Nothing has happened yet</b>Recordings, clips and posts for this creator will be listed here.</div>`);
+    : `<div class="empty"><img src="/brand/cat-mark-cyan.png?v=1795113" style="width:48px;height:48px;object-fit:contain;margin-bottom:8px" alt=""><b>Nothing has happened yet</b>Recordings, clips and posts for this creator will be listed here.</div>`);
 }
 
 /* ============================================================ overview */
@@ -2149,7 +2154,7 @@ function drawOverview() {
     <div class="card"><div class="card-head"><div><h2>Creators</h2><p class="sub">Each creator's status and results</p></div></div>
       ${o.creators.length ? `<div class="scroll"><table><tr><th>Creator</th><th>Status</th><th>Auto-post</th><th class="num">Clips today</th><th class="num">Posted today</th><th class="num">Waiting</th><th class="num">Failed</th><th class="num">Views</th><th class="num">Est. $</th></tr>
       ${o.creators.map(r => `<tr><td><a class="lnk" href="#" data-act="go" data-v="c:${esc(r.id)}">${esc(r.name)}</a></td><td>${state(r)}</td><td>${r.autopost ? `<span class="pill ok">On</span>` : `<span class="pill">Off</span>`}</td><td class="num">${r.clips_today} <span class="sub">/ ${r.clips_total}</span></td><td class="num">${r.posted_today} <span class="sub">/ ${r.posted_total}</span></td><td class="num">${r.queued}</td><td class="num">${r.failed}</td><td class="num">${r.views.toLocaleString()}</td><td class="num">${r.earnings.toFixed(2)}</td></tr>`).join("")}</table></div>`
-      : `<div class="empty"><img src="/brand/favicon.svg" alt=""><b>No creators yet</b>Add one to give each streamer their own workspace.</div>`}</div>
+      : `<div class="empty"><img src="/brand/cat-mark-cyan.png?v=1795113" style="width:48px;height:48px;object-fit:contain;margin-bottom:8px" alt=""><b>No creators yet</b>Add one to give each streamer their own workspace.</div>`}</div>
     <div class="card"><div class="card-head"><div><h2>Post queue</h2><p class="sub">${o.paused ? "Paused. Recording and clipping carry on; nothing is posted." : "Queued clips go out at their scheduled time."}</p></div>
         <button class="btn ${o.paused ? "primary" : ""}" data-act="pause">${ic(o.paused ? "play" : "pause")}${o.paused ? "Resume posting" : "Pause all posting"}</button></div>
       ${o.posts.length ? `<div class="scroll"><table class="stack"><tr><th>When</th><th>Clip</th><th>Creator</th><th>Account</th><th class="num">Views</th><th></th></tr>
@@ -2535,9 +2540,15 @@ function initTimelineScrubber(j, c) {
   const track = $("#timeline_track");
   const vid = $("#edit_src_vid");
   if (!track) return;
-  const dur = vid?.duration || j?.duration || Math.max(60, (c.end || 30) + 10);
+
+  function getDur() {
+    if (vid && vid.duration && !isNaN(vid.duration) && vid.duration > 0) return vid.duration;
+    if (j && j.duration && j.duration > 0) return j.duration;
+    return Math.max(60, (c.end || 30) + 10);
+  }
 
   function syncUI() {
+    const dur = getDur();
     const startPct = Math.min(100, Math.max(0, ((c.start || 0) / dur) * 100));
     const endPct = Math.min(100, Math.max(0, ((c.end || dur) / dur) * 100));
     const r = $("#tl_clip_range"), hs = $("#tl_handle_start"), he = $("#tl_handle_end");
@@ -2552,6 +2563,9 @@ function initTimelineScrubber(j, c) {
     if (tr) tr.textContent = `[${fmtTime(c.start)} - ${fmtTime(c.end)}]`;
     if (td) td.textContent = Math.max(0, (c.end || 0) - (c.start || 0)).toFixed(1) + "s";
 
+    const tdur = $("#txt_dur_time");
+    if (tdur) tdur.textContent = fmtTime(dur);
+
     const is_ = $('input[data-f="start"]'), ie_ = $('input[data-f="end"]');
     if (is_) is_.value = c.start;
     if (ie_) ie_.value = c.end;
@@ -2559,99 +2573,127 @@ function initTimelineScrubber(j, c) {
   syncUI();
 
   if (vid) {
-    vid.addEventListener("loadedmetadata", () => {
-      const d = vid.duration || j?.duration || 60;
+    vid.onloadedmetadata = () => {
+      const dur = getDur();
       const td = $("#txt_dur_time");
-      if (td) td.textContent = fmtTime(d);
-      if (c.start) vid.currentTime = c.start;
+      if (td) td.textContent = fmtTime(dur);
+      if (c.start) { try { vid.currentTime = c.start; } catch {} }
+      if (!c.end || c.end > dur || c.end === 30) {
+        c.end = Math.min(dur, Math.max((c.start || 0) + 5, 30));
+      }
       syncUI();
-    });
-    vid.addEventListener("timeupdate", () => {
-      const d = vid.duration || j?.duration || 60;
-      const cur = vid.currentTime;
+    };
+    vid.ontimeupdate = () => {
+      const dur = getDur();
+      const cur = vid.currentTime || 0;
       const tc = $("#txt_curr_time");
       if (tc) tc.textContent = fmtTime(cur);
-      const pct = Math.min(100, Math.max(0, (cur / d) * 100));
+      const pct = Math.min(100, Math.max(0, (cur / dur) * 100));
       const ph = $("#tl_playhead");
       if (ph) ph.style.left = pct + "%";
 
       const chkLoop = $("#chk_loop_clip");
-      if (chkLoop && chkLoop.checked && cur >= (c.end || d)) {
+      if (chkLoop && chkLoop.checked && cur >= (c.end || dur)) {
         vid.currentTime = c.start || 0;
       }
-    });
-    vid.addEventListener("play", () => {
+    };
+    vid.onplay = () => {
       const pbtn = $("#btn_tl_play");
       if (pbtn) pbtn.innerHTML = "⏸ Pause";
-    });
-    vid.addEventListener("pause", () => {
+    };
+    vid.onpause = () => {
       const pbtn = $("#btn_tl_play");
       if (pbtn) pbtn.innerHTML = "▶ Play";
-    });
-    vid.addEventListener("error", () => {
+    };
+    vid.onerror = () => {
       const fb = $("#edit_fallback_img");
-      if (fb) fb.style.display = "block";
-      vid.style.display = "none";
-    });
+      if (fb && fb.getAttribute("src")) fb.style.display = "block";
+    };
   }
 
-  // Click track to seek
-  track.addEventListener("pointerdown", e => {
-    if (e.target.classList.contains("timeline-handle")) return;
+  // Drag and click scrubbing on the track
+  let isScrubbing = false;
+  function seekTrack(clientX) {
+    const dur = getDur();
     const rect = track.getBoundingClientRect();
-    const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
     const targetTime = pct * dur;
-    if (vid) vid.currentTime = targetTime;
+    if (vid) {
+      try { vid.currentTime = targetTime; } catch {}
+    }
     const ph = $("#tl_playhead");
     if (ph) ph.style.left = (pct * 100) + "%";
     const tc = $("#txt_curr_time");
     if (tc) tc.textContent = fmtTime(targetTime);
-  });
+  }
+
+  track.onpointerdown = e => {
+    if (e.target.classList.contains("timeline-handle")) return;
+    isScrubbing = true;
+    try { track.setPointerCapture(e.pointerId); } catch {}
+    seekTrack(e.clientX);
+  };
+  track.onpointermove = e => {
+    if (!isScrubbing) return;
+    seekTrack(e.clientX);
+  };
+  const onScrubEnd = e => {
+    if (isScrubbing) {
+      isScrubbing = false;
+      try { track.releasePointerCapture(e.pointerId); } catch {}
+    }
+  };
+  track.onpointerup = onScrubEnd;
+  track.onpointercancel = onScrubEnd;
 
   // Start handle drag
   const hs = $("#tl_handle_start");
   if (hs) {
     let active = false;
-    hs.addEventListener("pointerdown", e => {
+    hs.onpointerdown = e => {
       e.preventDefault(); e.stopPropagation();
-      active = true; hs.setPointerCapture(e.pointerId);
-    });
-    hs.addEventListener("pointermove", e => {
+      active = true;
+      try { hs.setPointerCapture(e.pointerId); } catch {}
+    };
+    hs.onpointermove = e => {
       if (!active) return;
+      const dur = getDur();
       const rect = track.getBoundingClientRect();
       const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
       let t = Math.round(pct * dur * 10) / 10;
       t = Math.max(0, Math.min(c.end - 0.5, t));
       c.start = t;
-      if (vid) vid.currentTime = t;
+      if (vid) { try { vid.currentTime = t; } catch {} }
       syncUI();
-    });
+    };
     const onEnd = e => { if (active) { active = false; try { hs.releasePointerCapture(e.pointerId); } catch {} } };
-    hs.addEventListener("pointerup", onEnd);
-    hs.addEventListener("pointercancel", onEnd);
+    hs.onpointerup = onEnd;
+    hs.onpointercancel = onEnd;
   }
 
   // End handle drag
   const he = $("#tl_handle_end");
   if (he) {
     let active = false;
-    he.addEventListener("pointerdown", e => {
+    he.onpointerdown = e => {
       e.preventDefault(); e.stopPropagation();
-      active = true; he.setPointerCapture(e.pointerId);
-    });
-    he.addEventListener("pointermove", e => {
+      active = true;
+      try { he.setPointerCapture(e.pointerId); } catch {}
+    };
+    he.onpointermove = e => {
       if (!active) return;
+      const dur = getDur();
       const rect = track.getBoundingClientRect();
       const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
       let t = Math.round(pct * dur * 10) / 10;
       t = Math.max(c.start + 0.5, Math.min(dur, t));
       c.end = t;
-      if (vid) vid.currentTime = t;
+      if (vid) { try { vid.currentTime = t; } catch {} }
       syncUI();
-    });
+    };
     const onEnd = e => { if (active) { active = false; try { he.releasePointerCapture(e.pointerId); } catch {} } };
-    he.addEventListener("pointerup", onEnd);
-    he.addEventListener("pointercancel", onEnd);
+    he.onpointerup = onEnd;
+    he.onpointercancel = onEnd;
   }
 }
 
@@ -2665,8 +2707,16 @@ function drawClipDlg(full) {
 
   const m = j ? `/media/${j.id}/` : "";
   const sig = isSrc ? "source" : (c.status + c.version);
-  const videoSrc = isSrc ? (j ? `/media/${j.id}/source/video` : "")
-                         : `/media/${j.id}/clips/${c.id}/source/video`;
+  
+  const pickedFile = $("#file")?.files?.[0];
+  let videoSrc = "";
+  if (pickedFile) {
+    try { videoSrc = URL.createObjectURL(pickedFile); } catch {}
+  }
+  if (!videoSrc) {
+    videoSrc = isSrc ? (j ? `/media/${j.id}/source/video` : "")
+                     : `/media/${j.id}/clips/${c.id}/source/video`;
+  }
   const fallbackImgSrc = j ? `/api/jobs/${j.id}/frame?t=${c.start || 2}` : "";
 
   const stagePreview = c.status === "done" ? `<video src="${m}${esc(c.file)}?v=${c.version}" poster="${m}${esc(c.cover)}?v=${c.version}" controls autoplay playsinline style="width:100%;height:100%;object-fit:contain"></video>`
@@ -2686,6 +2736,9 @@ function drawClipDlg(full) {
               ${!isSrc ? `<span class="badge ${scoreCls(c.score)}" style="position:static">${c.judges ? "Words " + c.judges.words + (c.judges.reaction ? " · Reaction " + c.judges.reaction : "") : c.score ? "Score " + c.score : "Clip"}</span>` : `<span class="pill ok">Full Source Video</span>`}
             </div>
             <div style="display:flex;align-items:center;gap:8px">
+              <button type="button" class="tl-btn" data-act="studio_load_video" style="border-color:#00F0FF;color:#00F0FF;font-weight:700">
+                📁 Load Video
+              </button>
               <button type="button" class="tl-btn ${D.mode === 'editor' ? 'primary' : ''}" data-act="dlg_mode" data-mode="editor">
                 📺 16:9 Full Video (Crop & Facecam)
               </button>
@@ -2703,6 +2756,18 @@ function drawClipDlg(full) {
               <video id="edit_src_vid" preload="auto" playsinline src="${videoSrc}"></video>
               <img id="edit_fallback_img" src="${fallbackImgSrc}" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
               
+              <!-- Empty Video Prompt Overlay -->
+              <div class="empty-video-prompt" id="empty_video_prompt" style="${videoSrc ? 'display:none;' : ''}position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(11,15,23,0.92);gap:14px;z-index:20;padding:24px;text-align:center">
+                <div style="font-size:48px">🎬</div>
+                <h3 style="font-size:18px;font-weight:700;color:#fff;margin:0">Load Video into Studio</h3>
+                <p style="color:#94a3b8;font-size:13px;max-width:420px;margin:0">Select a video from your computer or drop it here to scrub through the timeline and place your Facecam and 9:16 Game crop areas.</p>
+                <button type="button" class="btn primary" data-act="studio_load_video" style="background:#00F0FF;color:#000;font-weight:800;padding:0 24px;height:42px;font-size:14px;border:none;border-radius:8px;cursor:pointer">
+                  📁 Choose Video File to Preview
+                </button>
+                <span style="font-size:11px;color:#64748b">or drag and drop any MP4 / MKV video here</span>
+              </div>
+              <input type="file" id="studio_video_file_input" accept="video/*" style="display:none">
+
               <!-- Dotted 9:16 Crop Box (Highlighted Region) -->
               <div class="box-clip-916" id="box_game">
                 <div class="box-clip-tag">✂️ 9:16 Game Area</div>
@@ -2802,7 +2867,7 @@ function drawClipDlg(full) {
             </div>
             <div style="display:flex;justify-content:center;padding:4px 0">
               <div class="area-mockup-916" id="mockup_916" style="width:140px">
-                <div class="mock-bg" id="mock_bg"><img src="${fallbackImgSrc}" alt=""></div>
+                <div class="mock-bg" id="mock_bg">${fallbackImgSrc ? `<img src="${fallbackImgSrc}" alt="">` : `<div style="width:100%;height:100%;background:linear-gradient(180deg,#161f30 0%,#0b0f17 100%)"></div>`}</div>
                 <div class="mock-fc" id="mock_fc">Facecam</div>
                 <div class="mock-hook" id="mock_hook">${esc(c.hook || "TITLE HOOK")}</div>
                 <div class="mock-caps">ANIMATED CAPTIONS</div>
@@ -2876,6 +2941,64 @@ function drawClipDlg(full) {
     setTimeout(() => {
       initAreaSelector();
       initTimelineScrubber(j, c);
+      const inp = $("#studio_video_file_input");
+      if (inp) {
+        inp.onchange = e => {
+          const f = e.target.files?.[0];
+          if (f) {
+            const vUrl = URL.createObjectURL(f);
+            const vid = $("#edit_src_vid");
+            if (vid) {
+              vid.style.display = "block";
+              vid.src = vUrl;
+              vid.load();
+              vid.play().catch(() => {});
+            }
+            const prm = $("#empty_video_prompt");
+            if (prm) prm.style.display = "none";
+            const mainFile = $("#file");
+            if (mainFile) {
+              try {
+                const dt = new DataTransfer();
+                dt.items.add(f);
+                mainFile.files = dt.files;
+                if ($("#url")) $("#url").value = f.name;
+              } catch {}
+            }
+            toast("Video loaded into Studio!", "ok");
+          }
+        };
+      }
+      const stg = $("#stage_169");
+      if (stg) {
+        stg.ondragover = e => { e.preventDefault(); };
+        stg.ondrop = e => {
+          e.preventDefault();
+          const f = e.dataTransfer?.files?.[0];
+          if (f && (f.type.startsWith("video/") || /\.(mp4|mov|mkv|webm|m4v)$/i.test(f.name))) {
+            const vUrl = URL.createObjectURL(f);
+            const vid = $("#edit_src_vid");
+            if (vid) {
+              vid.style.display = "block";
+              vid.src = vUrl;
+              vid.load();
+              vid.play().catch(() => {});
+            }
+            const prm = $("#empty_video_prompt");
+            if (prm) prm.style.display = "none";
+            const mainFile = $("#file");
+            if (mainFile) {
+              try {
+                const dt = new DataTransfer();
+                dt.items.add(f);
+                mainFile.files = dt.files;
+                if ($("#url")) $("#url").value = f.name;
+              } catch {}
+            }
+            toast("Video dropped into Studio!", "ok");
+          }
+        };
+      }
       const inHook = $("#input_hook_text");
       if (inHook) {
         inHook.addEventListener("input", e => {
@@ -3215,6 +3338,11 @@ document.addEventListener("click", async e => {
     }
     if (a === "open_source_editor") {
       openSourceEditor();
+      return;
+    }
+    if (a === "studio_load_video") {
+      const inp = $("#studio_video_file_input");
+      if (inp) inp.click();
       return;
     }
     if (a === "apply_source_areas") {
