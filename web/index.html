@@ -1415,7 +1415,67 @@ function drawAdd(variant) {
       <div class="ob"><div class="ot cap-head"><span id="o_style_label">Caption style</span>
         <label><input type="checkbox" id="o_captions" data-caption-toggle ${c?.captions === false ? "" : "checked"}>Generate captions</label></div>
         ${choice("o_style", Object.entries(S.status.styles).map(([k, v]) => ({v:k, label:v, prev:capPrev(k)})), c?.style ?? "bounce", c?.captions === false)}</div>
-      <div class="ob"><div class="ot">Layout</div>${choice("o_layout", Object.entries(S.status.layouts).map(([k, v]) => ({v:k, label:LAYOUT_SHORT[k] || v, title:v, prev:`<span class="lay-prev ${esc(k)}"><span class="ph"><i></i></span></span>`})), c?.layout ?? "blur")}</div>
+      <div class="ob"><div class="ot">Layout</div>${choice("o_layout", Object.entries(S.status.layouts).map(([k, v]) => ({v:k, label:LAYOUT_SHORT[k] || v, title:v, prev:`<span class="lay-prev ${esc(k)}"><span class="ph"><i></i></span></span>`})), c?.layout ?? "gameplay")}</div>
+
+      <!-- Gaming Video Dual Layer Setup (Facecam & Game) -->
+      <div class="ob wide" id="opt_gaming_areas" style="display:flex;flex-direction:column;gap:12px;background:var(--card,#1e1e1e);border:1px solid var(--line,#3a3a3a);border-radius:10px;padding:16px;margin-top:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div class="ot" style="margin:0;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px">
+            🎮 Gaming Dual-Layer Setup (Facecam & Main Game)
+          </div>
+          <span style="font-size:11px;color:#00F0FF;font-weight:600;background:rgba(0,240,255,0.1);padding:3px 8px;border-radius:4px;border:1px solid rgba(0,240,255,0.3)">Layer 1: Facecam · Layer 2: Main Game</span>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:1fr 140px;gap:16px;align-items:start">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <div style="font-size:11.5px;font-weight:600;margin-bottom:8px;color:var(--dim)">Facecam Card Orientation Preset:</div>
+              <div class="area-btns" id="opt_orient_btns">
+                <button type="button" class="area-btn active" data-opt-pos="top_center">⭐ Top-Center (Reference Style)</button>
+                <button type="button" class="area-btn" data-opt-pos="top_right">Top-Right Corner</button>
+                <button type="button" class="area-btn" data-opt-pos="top_left">Top-Left Corner</button>
+                <button type="button" class="area-btn" data-opt-pos="split">Split Screen</button>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;background:var(--bg,#121212);padding:12px;border-radius:8px;border:1px solid var(--line,#2a2a2a)">
+              <div class="area-slider">
+                <span>Facecam Size</span>
+                <input type="range" id="opt_fc_size" min="300" max="960" step="20" value="760">
+                <span id="opt_txt_fc_size">760px</span>
+              </div>
+              <div class="area-slider">
+                <span>Vertical Y</span>
+                <input type="range" id="opt_fc_y" min="20" max="900" step="10" value="120">
+                <span id="opt_txt_fc_y">120px</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--dim)">
+              <span>🟢 <b>Foreground Layer:</b> Floating webcam with rounded corners</span>
+              <span>🟣 <b>Background Layer:</b> Main gameplay vertical fill</span>
+            </div>
+          </div>
+
+          <!-- 9:16 Mockup Preview -->
+          <div class="mockup-916-wrap">
+            <div style="font-size:11px;font-weight:700;color:var(--dim)">9:16 Preview</div>
+            <div class="area-mockup-916" id="opt_mockup_916" style="width:140px">
+              <div class="mock-bg" style="background:#222;display:flex;align-items:center;justify-content:center;color:#777;font-size:10px;font-weight:700">
+                MAIN GAME
+              </div>
+              <div class="mock-fc" id="opt_mock_fc" style="left:21px;top:15px;width:98px;height:55px;border-radius:6px">
+                Facecam
+              </div>
+              <div class="mock-hook" id="opt_mock_hook" style="top:76px;font-size:6px">
+                I FOUND BIGFOOT IN GTA 6 🦧
+              </div>
+              <div class="mock-caps">ANIMATED CAPTIONS</div>
+            </div>
+            <div style="font-size:9.5px;color:var(--dim);text-align:center">Hook badge under Facecam</div>
+          </div>
+        </div>
+      </div>
       <div class="ob"><div class="ot">Video quality</div><input type="hidden" id="o_quality" value="720"><div class="seg" role="group" aria-label="Video quality">
         <button type="button" data-seg="o_quality" data-v="720" aria-pressed="true">720p<small>Fast</small></button>
         <button type="button" data-seg="o_quality" data-v="1080" aria-pressed="false">1080p<small>Sharper, about 2x slower</small></button></div></div>
@@ -1484,8 +1544,79 @@ function jobOptions() {
   const o = {max_clips:n("#o_max"), min_len:n("#o_min"), max_len:n("#o_maxlen"), captions:$("#o_captions").checked, style:$("#o_style").value, layout:$("#o_layout").value, quality:n("#o_quality")};
   if (n("#o_from") !== null) o.range_start = n("#o_from") * 60;
   if (n("#o_to") !== null) o.range_end = n("#o_to") * 60;
+  if (o.layout === "gameplay" || o.layout === "split") {
+    o.facecam_pos = S.default_facecam_pos || [160, 120, 760, 440];
+    if (S.default_facecam) o.facecam = S.default_facecam;
+    if (S.default_game_area) o.game_area = S.default_game_area;
+  }
   return o;
 }
+
+document.addEventListener("click", e => {
+  const btn = e.target.closest("[data-opt-pos]");
+  if (btn) {
+    const pos = btn.dataset.optPos;
+    $$("#opt_orient_btns .area-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const mfc = $("#opt_mock_fc");
+    const mhook = $("#opt_mock_hook");
+    const sSize = $("#opt_fc_size"), sY = $("#opt_fc_y");
+    const tSize = $("#opt_txt_fc_size"), tY = $("#opt_txt_fc_y");
+    
+    if (pos === "top_center") {
+      S.default_facecam_pos = [160, 120, 760, 440];
+      if (sSize) sSize.value = 760; if (tSize) tSize.textContent = "760px";
+      if (sY) sY.value = 120; if (tY) tY.textContent = "120px";
+      if (mfc) { mfc.style.left = "21px"; mfc.style.top = "15px"; mfc.style.width = "98px"; mfc.style.height = "55px"; mfc.style.borderRadius = "6px"; }
+      if (mhook) { mhook.style.top = "76px"; mhook.style.display = "block"; }
+    } else if (pos === "top_right") {
+      S.default_facecam_pos = [660, 26, 390, 240];
+      if (sSize) sSize.value = 390; if (tSize) tSize.textContent = "390px";
+      if (sY) sY.value = 26; if (tY) tY.textContent = "26px";
+      if (mfc) { mfc.style.left = "85px"; mfc.style.top = "4px"; mfc.style.width = "50px"; mfc.style.height = "31px"; mfc.style.borderRadius = "4px"; }
+      if (mhook) { mhook.style.top = "40px"; }
+    } else if (pos === "top_left") {
+      S.default_facecam_pos = [30, 26, 390, 240];
+      if (sSize) sSize.value = 390; if (tSize) tSize.textContent = "390px";
+      if (sY) sY.value = 26; if (tY) tY.textContent = "26px";
+      if (mfc) { mfc.style.left = "4px"; mfc.style.top = "4px"; mfc.style.width = "50px"; mfc.style.height = "31px"; mfc.style.borderRadius = "4px"; }
+      if (mhook) { mhook.style.top = "40px"; }
+    } else if (pos === "split") {
+      const layInput = $("#o_layout");
+      if (layInput) layInput.value = "split";
+      $$('[data-seg="o_layout"]').forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === "split")));
+      S.default_facecam_pos = [0, 0, 1080, 720];
+      if (mfc) { mfc.style.left = "0px"; mfc.style.top = "0px"; mfc.style.width = "100%"; mfc.style.height = "90px"; mfc.style.borderRadius = "0"; }
+      if (mhook) { mhook.style.top = "96px"; }
+    }
+    return;
+  }
+});
+
+document.addEventListener("input", e => {
+  if (e.target.id === "opt_fc_size" || e.target.id === "opt_fc_y") {
+    const w = parseInt($("#opt_fc_size")?.value || "760", 10);
+    const y = parseInt($("#opt_fc_y")?.value || "120", 10);
+    const aspect = 9 / 16;
+    const h = Math.round(w * aspect);
+    const x = Math.max(0, (1080 - w) / 2);
+    S.default_facecam_pos = [Math.round(x), y, w, h];
+    if ($("#opt_txt_fc_size")) $("#opt_txt_fc_size").textContent = w + "px";
+    if ($("#opt_txt_fc_y")) $("#opt_txt_fc_y").textContent = y + "px";
+    
+    const mfc = $("#opt_mock_fc"), mhook = $("#opt_mock_hook");
+    const sm = 140 / 1080;
+    if (mfc) {
+      mfc.style.left = (x * sm) + "px";
+      mfc.style.top = (y * sm) + "px";
+      mfc.style.width = (w * sm) + "px";
+      mfc.style.height = (h * sm) + "px";
+    }
+    if (mhook) {
+      mhook.style.top = ((y + h + 32) * sm) + "px";
+    }
+  }
+});
 /* ---------- attachments: nothing starts until Make clips is pressed.
    Each page keeps its own draft (Home, All videos and every creator), so a link typed for one creator never
    shows up under another. Links move out of the box into the list as soon as they are recognised. */
