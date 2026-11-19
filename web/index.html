@@ -2338,6 +2338,97 @@ async function drawSettings() {
 }
 async function saveSettings() { const d = {}; $$("#sform [data-s]").forEach(i => d[i.dataset.s] = i.value); await send("/api/settings", d, "PUT"); }
 
+function parseYouTubeId(u) {
+  if (!u) return null;
+  const m = String(u).trim().match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|v\/|live\/))([\w-]{11})/i);
+  return m ? m[1] : null;
+}
+
+function ensureYouTubeAPI(cb) {
+  if (window.YT && window.YT.Player) return cb();
+  const prev = window.onYouTubeIframeAPIReady;
+  window.onYouTubeIframeAPIReady = () => {
+    if (prev) try { prev(); } catch {}
+    cb();
+  };
+  if (!document.getElementById("yt_api_script")) {
+    const s = document.createElement("script");
+    s.id = "yt_api_script";
+    s.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(s);
+  }
+}
+
+function initYouTubePlayer(videoId, startTime, onReadyCb) {
+  if (D.ytPlayer && typeof D.ytPlayer.destroy === "function") {
+    try { D.ytPlayer.destroy(); } catch {}
+    D.ytPlayer = null;
+  }
+  const slot = document.getElementById("yt_player_slot");
+  if (!slot) return;
+
+  ensureYouTubeAPI(() => {
+    try {
+      D.ytPlayer = new YT.Player("yt_player_slot", {
+        width: "100%",
+        height: "100%",
+        videoId: videoId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          modestbranding: 1,
+          rel: 0,
+          fs: 0,
+          playsinline: 1,
+          origin: window.location.origin
+        },
+        events: {
+          onReady: (event) => {
+            if (startTime) {
+              try { event.target.seekTo(startTime, true); } catch {}
+            }
+            if (onReadyCb) onReadyCb(event.target);
+          },
+          onStateChange: (event) => {
+            const pbtn = $("#btn_tl_play");
+            const isPl = event.data === (window.YT?.PlayerState?.PLAYING ?? 1);
+            if (isPl) {
+              if (pbtn) pbtn.innerHTML = "⏸ Pause";
+              D.isPlaying = true;
+            } else {
+              if (pbtn) pbtn.innerHTML = "▶ Play";
+              D.isPlaying = false;
+            }
+          }
+        }
+      });
+    } catch (err) {
+      console.warn("YouTube player init error:", err);
+    }
+  });
+}
+
+async function loadStudioUrl(u) {
+  if (!u) return toast("Please enter a video URL", "bad");
+  D.linked_url = u;
+  if ($("#url") && !$("#url").value.trim()) {
+    $("#url").value = u;
+    if (typeof onLink === "function") onLink($("#url"));
+  }
+  toast("Loading video...", "ok");
+  try {
+    const info = await lookUp(u);
+    if (info) {
+      D.linked_info = info;
+      if (info.duration && D.custom_clip) {
+        D.custom_clip.end = Math.min(info.duration, Math.max((D.custom_clip.start || 0) + 5, 30));
+      }
+    }
+  } catch {}
+  drawClipDlg(true);
+}
+
 /* ============================================================ clip & video studio editor */
 function openSourceEditor() {
   D.isSource = true;
@@ -2349,6 +2440,13 @@ function openSourceEditor() {
   D.game_area = S.default_game_area ? [...S.default_game_area] : [656, 0, 608, 1080];
   D.facecam_pos = S.default_facecam_pos ? [...S.default_facecam_pos] : [160, 120, 760, 440];
   
+  // Look for any linked URL from the composer
+  const A = typeof att === "function" ? att() : null;
+  const linked = A?.links?.find(l => l.url) || null;
+  const inputUrl = $("#url")?.value?.trim() || "";
+  D.linked_url = linked?.url || inputUrl || D.linked_url || "";
+  D.linked_info = linked?.info || D.linked_info || null;
+
   const fromMin = Number($("#o_from")?.value) || 0;
   const toMin = Number($("#o_to")?.value) || (fromMin + 0.5);
   D.custom_clip = {
@@ -2360,6 +2458,23 @@ function openSourceEditor() {
     layout: "gameplay"
   };
   if (D.custom_clip.end <= D.custom_clip.start) D.custom_clip.end = D.custom_clip.start + 30;
+  if (D.linked_info?.duration) {
+    D.custom_clip.end = Math.min(D.linked_info.duration, Math.max(D.custom_clip.start + 5, D.custom_clip.end));
+  } else if (D.linked_url) {
+    lookUp(D.linked_url).then(info => {
+      if (info && info.duration) {
+        D.linked_info = info;
+        if (D.custom_clip) {
+          D.custom_clip.end = Math.min(info.duration, Math.max(D.custom_clip.start + 5, D.custom_clip.end));
+        }
+        const td = $("#txt_dur_time");
+        if (td) td.textContent = fmtTime(info.duration);
+        const tr = $("#txt_clip_range"), tcd = $("#txt_clip_dur");
+        if (tr && D.custom_clip) tr.textContent = `[${fmtTime(D.custom_clip.start)} - ${fmtTime(D.custom_clip.end)}]`;
+        if (tcd && D.custom_clip) tcd.textContent = Math.max(0, D.custom_clip.end - D.custom_clip.start).toFixed(1) + "s";
+      }
+    }).catch(() => {});
+  }
   drawClipDlg(true);
   $("#clipdlg").showModal();
 }
@@ -2536,15 +2651,83 @@ function initAreaSelector() {
   requestAnimationFrame(() => syncAreaDOM());
 }
 
+function getActivePlayer(vid, c, j) {
+  return {
+    getDuration: () => {
+      if (D.ytPlayer && typeof D.ytPlayer.getDuration === "function") {
+        const d = D.ytPlayer.getDuration();
+        if (d && !isNaN(d) && d > 0) return d;
+      }
+      if (D.linked_info && D.linked_info.duration) return D.linked_info.duration;
+      if (vid && vid.duration && !isNaN(vid.duration) && vid.duration > 0) return vid.duration;
+      if (j && j.duration && j.duration > 0) return j.duration;
+      return Math.max(60, (c?.end || 30) + 10);
+    },
+    getCurrentTime: () => {
+      if (D.ytPlayer && typeof D.ytPlayer.getCurrentTime === "function") {
+        const t = D.ytPlayer.getCurrentTime();
+        if (t != null && !isNaN(t)) return t;
+      }
+      if (vid && vid.src && vid.currentTime != null && !isNaN(vid.currentTime)) return vid.currentTime;
+      return D.currentTime != null ? D.currentTime : (c?.start || 0);
+    },
+    seekTo: (t, allowSeekAhead = true) => {
+      D.currentTime = t;
+      if (D.ytPlayer && typeof D.ytPlayer.seekTo === "function") {
+        try { D.ytPlayer.seekTo(t, allowSeekAhead); } catch {}
+      }
+      if (vid && vid.src) {
+        try { vid.currentTime = t; } catch {}
+      }
+      const tc = $("#txt_curr_time");
+      if (tc) tc.textContent = fmtTime(t);
+    },
+    play: () => {
+      if (D.ytPlayer && typeof D.ytPlayer.playVideo === "function") {
+        try { D.ytPlayer.playVideo(); } catch {}
+      }
+      if (vid && vid.src) {
+        try { vid.play().catch(() => {}); } catch {}
+      }
+      D.isPlaying = true;
+      const pbtn = $("#btn_tl_play");
+      if (pbtn) pbtn.innerHTML = "⏸ Pause";
+    },
+    pause: () => {
+      if (D.ytPlayer && typeof D.ytPlayer.pauseVideo === "function") {
+        try { D.ytPlayer.pauseVideo(); } catch {}
+      }
+      if (vid && vid.src) {
+        try { vid.pause(); } catch {}
+      }
+      D.isPlaying = false;
+      const pbtn = $("#btn_tl_play");
+      if (pbtn) pbtn.innerHTML = "▶ Play";
+    },
+    togglePlay: function() {
+      if (this.isPlaying()) this.pause();
+      else this.play();
+    },
+    isPlaying: () => {
+      if (D.ytPlayer && typeof D.ytPlayer.getPlayerState === "function") {
+        return D.ytPlayer.getPlayerState() === (window.YT?.PlayerState?.PLAYING ?? 1);
+      }
+      if (vid && vid.src) return !vid.paused;
+      return !!D.isPlaying;
+    }
+  };
+}
+
 function initTimelineScrubber(j, c) {
   const track = $("#timeline_track");
   const vid = $("#edit_src_vid");
-  if (!track) return;
+  if (!track || !c) return;
+
+  const player = getActivePlayer(vid, c, j);
+  D.activePlayer = player;
 
   function getDur() {
-    if (vid && vid.duration && !isNaN(vid.duration) && vid.duration > 0) return vid.duration;
-    if (j && j.duration && j.duration > 0) return j.duration;
-    return Math.max(60, (c.end || 30) + 10);
+    return player.getDuration();
   }
 
   function syncUI() {
@@ -2572,7 +2755,7 @@ function initTimelineScrubber(j, c) {
   }
   syncUI();
 
-  if (vid) {
+  if (vid && vid.src) {
     vid.onloadedmetadata = () => {
       const dur = getDur();
       const td = $("#txt_dur_time");
@@ -2583,44 +2766,56 @@ function initTimelineScrubber(j, c) {
       }
       syncUI();
     };
-    vid.ontimeupdate = () => {
-      const dur = getDur();
-      const cur = vid.currentTime || 0;
-      const tc = $("#txt_curr_time");
-      if (tc) tc.textContent = fmtTime(cur);
-      const pct = Math.min(100, Math.max(0, (cur / dur) * 100));
-      const ph = $("#tl_playhead");
-      if (ph) ph.style.left = pct + "%";
-
-      const chkLoop = $("#chk_loop_clip");
-      if (chkLoop && chkLoop.checked && cur >= (c.end || dur)) {
-        vid.currentTime = c.start || 0;
-      }
-    };
-    vid.onplay = () => {
-      const pbtn = $("#btn_tl_play");
-      if (pbtn) pbtn.innerHTML = "⏸ Pause";
-    };
-    vid.onpause = () => {
-      const pbtn = $("#btn_tl_play");
-      if (pbtn) pbtn.innerHTML = "▶ Play";
-    };
     vid.onerror = () => {
       const fb = $("#edit_fallback_img");
       if (fb && fb.getAttribute("src")) fb.style.display = "block";
     };
   }
 
-  // Drag and click scrubbing on the track
+  // Real-time interval ticker for playhead movement, looping, and play state
+  if (D.playTimer) clearInterval(D.playTimer);
   let isScrubbing = false;
+  D.playTimer = setInterval(() => {
+    if (!document.getElementById("timeline_track")) {
+      clearInterval(D.playTimer);
+      D.playTimer = null;
+      return;
+    }
+    const dur = player.getDuration();
+    const cur = player.getCurrentTime();
+    const tc = $("#txt_curr_time");
+    if (tc) tc.textContent = fmtTime(cur);
+    const td = $("#txt_dur_time");
+    if (td && dur) td.textContent = fmtTime(dur);
+
+    if (dur > 0 && !isScrubbing) {
+      const pct = Math.min(100, Math.max(0, (cur / dur) * 100));
+      const ph = $("#tl_playhead");
+      if (ph) ph.style.left = pct + "%";
+    }
+
+    const chkLoop = $("#chk_loop_clip");
+    if (chkLoop && chkLoop.checked && cur >= (c.end || dur)) {
+      player.seekTo(c.start || 0, true);
+    }
+
+    const pbtn = $("#btn_tl_play");
+    if (pbtn) {
+      if (player.isPlaying()) {
+        if (!pbtn.innerHTML.includes("Pause")) pbtn.innerHTML = "⏸ Pause";
+      } else {
+        if (!pbtn.innerHTML.includes("Play")) pbtn.innerHTML = "▶ Play";
+      }
+    }
+  }, 100);
+
+  // Drag and click scrubbing on the track
   function seekTrack(clientX) {
     const dur = getDur();
     const rect = track.getBoundingClientRect();
     const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
     const targetTime = pct * dur;
-    if (vid) {
-      try { vid.currentTime = targetTime; } catch {}
-    }
+    player.seekTo(targetTime, true);
     const ph = $("#tl_playhead");
     if (ph) ph.style.left = (pct * 100) + "%";
     const tc = $("#txt_curr_time");
@@ -2663,7 +2858,7 @@ function initTimelineScrubber(j, c) {
       let t = Math.round(pct * dur * 10) / 10;
       t = Math.max(0, Math.min(c.end - 0.5, t));
       c.start = t;
-      if (vid) { try { vid.currentTime = t; } catch {} }
+      player.seekTo(t, false);
       syncUI();
     };
     const onEnd = e => { if (active) { active = false; try { hs.releasePointerCapture(e.pointerId); } catch {} } };
@@ -2688,7 +2883,7 @@ function initTimelineScrubber(j, c) {
       let t = Math.round(pct * dur * 10) / 10;
       t = Math.max(c.start + 0.5, Math.min(dur, t));
       c.end = t;
-      if (vid) { try { vid.currentTime = t; } catch {} }
+      player.seekTo(t, false);
       syncUI();
     };
     const onEnd = e => { if (active) { active = false; try { he.releasePointerCapture(e.pointerId); } catch {} } };
@@ -2717,6 +2912,8 @@ function drawClipDlg(full) {
     videoSrc = isSrc ? (j ? `/media/${j.id}/source/video` : "")
                      : `/media/${j.id}/clips/${c.id}/source/video`;
   }
+  const linkUrl = D.linked_url || $("#url")?.value?.trim() || "";
+  const ytId = parseYouTubeId(linkUrl);
   const fallbackImgSrc = j ? `/api/jobs/${j.id}/frame?t=${c.start || 2}` : "";
 
   const stagePreview = c.status === "done" ? `<video src="${m}${esc(c.file)}?v=${c.version}" poster="${m}${esc(c.cover)}?v=${c.version}" controls autoplay playsinline style="width:100%;height:100%;object-fit:contain"></video>`
@@ -2729,22 +2926,27 @@ function drawClipDlg(full) {
         <!-- Main Left Video Studio + Timeline Scrubber -->
         <div class="editor-main">
           <div class="editor-main-head">
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-weight:700;font-size:14px;color:#fff;display:flex;align-items:center;gap:6px">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <span style="font-weight:700;font-size:14px;color:#fff;display:flex;align-items:center;gap:6px;white-space:nowrap">
                 🎬 ${isSrc ? 'Gaming Timeline & Area Studio' : 'Clip Studio'}
               </span>
-              ${!isSrc ? `<span class="badge ${scoreCls(c.score)}" style="position:static">${c.judges ? "Words " + c.judges.words + (c.judges.reaction ? " · Reaction " + c.judges.reaction : "") : c.score ? "Score " + c.score : "Clip"}</span>` : `<span class="pill ok">Full Source Video</span>`}
+              ${!isSrc ? `<span class="badge ${scoreCls(c.score)}" style="position:static">${c.judges ? "Words " + c.judges.words + (c.judges.reaction ? " · Reaction " + c.judges.reaction : "") : c.score ? "Score " + c.score : "Clip"}</span>` : `<span class="pill ok" style="white-space:nowrap">Full Source Video</span>`}
+            </div>
+            <!-- Interactive URL loader in head -->
+            <div style="display:flex;align-items:center;gap:6px;flex:1;max-width:360px;margin:0 8px">
+              <input id="studio_url_inp" type="text" placeholder="YouTube or video link..." value="${esc(linkUrl)}" style="background:#090D14;border:1px solid #1C2638;color:#00F0FF;border-radius:6px;padding:3px 8px;font-size:11px;width:100%;height:28px" aria-label="Linked video URL">
+              <button type="button" class="tl-btn sm" data-act="studio_load_url" style="white-space:nowrap;height:28px;border-color:#00F0FF;color:#00F0FF;font-weight:700" title="Load link to scrub">🔗 Load</button>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <button type="button" class="tl-btn" data-act="studio_load_video" style="border-color:#00F0FF;color:#00F0FF;font-weight:700">
-                📁 Load Video
+                📁 Load File
               </button>
               <button type="button" class="tl-btn ${D.mode === 'editor' ? 'primary' : ''}" data-act="dlg_mode" data-mode="editor">
-                📺 16:9 Full Video (Crop & Facecam)
+                📺 16:9 Full Video
               </button>
               ${!isSrc ? `
               <button type="button" class="tl-btn ${D.mode === 'preview' ? 'primary' : ''}" data-act="dlg_mode" data-mode="preview">
-                📱 9:16 Vertical Preview
+                📱 9:16 Preview
               </button>` : ''}
             </div>
           </div>
@@ -2752,19 +2954,33 @@ function drawClipDlg(full) {
           <!-- Video View Canvas Wrap -->
           <div class="editor-stage-wrap" id="stage_wrap">
             ${D.mode === 'editor' ? `
-            <div class="stage-169-canvas" id="stage_169">
-              <video id="edit_src_vid" preload="auto" playsinline src="${videoSrc}"></video>
-              <img id="edit_fallback_img" src="${fallbackImgSrc}" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+            <div class="stage-169-canvas" id="stage_169" style="position:relative;background:#000;overflow:hidden">
+              <!-- YouTube Video Player Container with pointer-events: none -->
+              <div id="yt_player_wrap" style="${ytId ? 'display:block;' : 'display:none;'}position:absolute;inset:0;width:100%;height:100%;overflow:hidden;z-index:1;pointer-events:none;background:#000;">
+                <div id="yt_player_slot" style="width:100%;height:100%;"></div>
+              </div>
+
+              <!-- HTML5 Video element -->
+              <video id="edit_src_vid" preload="auto" playsinline src="${videoSrc}" style="${(!ytId && videoSrc) ? 'display:block;' : 'display:none;'}width:100%;height:100%;object-fit:contain;background:#000;"></video>
+              <img id="edit_fallback_img" src="${fallbackImgSrc || (D.linked_info?.thumbnail || '')}" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
               
               <!-- Empty Video Prompt Overlay -->
-              <div class="empty-video-prompt" id="empty_video_prompt" style="${videoSrc ? 'display:none;' : ''}position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(11,15,23,0.92);gap:14px;z-index:20;padding:24px;text-align:center">
+              <div class="empty-video-prompt" id="empty_video_prompt" style="${(ytId || videoSrc) ? 'display:none;' : ''}position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(11,15,23,0.92);gap:14px;z-index:20;padding:24px;text-align:center">
                 <div style="font-size:48px">🎬</div>
                 <h3 style="font-size:18px;font-weight:700;color:#fff;margin:0">Load Video into Studio</h3>
-                <p style="color:#94a3b8;font-size:13px;max-width:420px;margin:0">Select a video from your computer or drop it here to scrub through the timeline and place your Facecam and 9:16 Game crop areas.</p>
-                <button type="button" class="btn primary" data-act="studio_load_video" style="background:#00F0FF;color:#000;font-weight:800;padding:0 24px;height:42px;font-size:14px;border:none;border-radius:8px;cursor:pointer">
-                  📁 Choose Video File to Preview
-                </button>
-                <span style="font-size:11px;color:#64748b">or drag and drop any MP4 / MKV video here</span>
+                <p style="color:#94a3b8;font-size:13px;max-width:440px;margin:0">Paste a YouTube / Video link or select a file to scrub through the video and place your 9:16 Game area and Facecam.</p>
+                <div style="display:flex;gap:8px;width:100%;max-width:420px">
+                  <input id="studio_prompt_url_inp" type="text" placeholder="Paste YouTube link here..." style="background:#090D14;border:1px solid #1C2638;color:#00F0FF;border-radius:6px;padding:6px 12px;font-size:13px;flex:1">
+                  <button type="button" class="btn primary" data-act="studio_load_prompt_url" style="background:#00F0FF;color:#000;font-weight:800;padding:0 16px;font-size:13px;border-radius:6px;cursor:pointer">
+                    🔗 Load
+                  </button>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+                  <button type="button" class="btn ghost" data-act="studio_load_video" style="border:1px solid #1C2638;color:#fff;font-weight:600;padding:0 16px;height:36px;font-size:12px;border-radius:6px;cursor:pointer">
+                    📁 Choose Local File
+                  </button>
+                  <span style="font-size:11px;color:#64748b">or drag & drop video file here</span>
+                </div>
               </div>
               <input type="file" id="studio_video_file_input" accept="video/*" style="display:none">
 
@@ -2800,7 +3016,7 @@ function drawClipDlg(full) {
                 <span>⏱️ Playhead: </span>
                 <span class="timeline-time-badge" id="txt_curr_time">${fmtTime(c.start || 0)}</span>
                 <span style="color:#64748b;margin:0 4px">/</span>
-                <span class="timeline-time-badge" id="txt_dur_time">${fmtTime(j?.duration || 60)}</span>
+                <span class="timeline-time-badge" id="txt_dur_time">${fmtTime(D.linked_info?.duration || j?.duration || 60)}</span>
               </div>
               <div style="display:flex;align-items:center;gap:6px">
                 <span>✂️ Clip Range: </span>
@@ -2940,7 +3156,43 @@ function drawClipDlg(full) {
 
     setTimeout(() => {
       initAreaSelector();
+      if (ytId) {
+        initYouTubePlayer(ytId, c.start || 0, (playerInstance) => {
+          initTimelineScrubber(j, c);
+          const dur = playerInstance.getDuration();
+          if (dur && dur > 0) {
+            if (!c.end || c.end > dur || c.end === 30) {
+              c.end = Math.min(dur, Math.max((c.start || 0) + 5, 30));
+            }
+            const td = $("#txt_dur_time");
+            if (td) td.textContent = fmtTime(dur);
+            const tr = $("#txt_clip_range"), tcd = $("#txt_clip_dur");
+            if (tr) tr.textContent = `[${fmtTime(c.start)} - ${fmtTime(c.end)}]`;
+            if (tcd) tcd.textContent = Math.max(0, c.end - c.start).toFixed(1) + "s";
+          }
+        });
+      }
       initTimelineScrubber(j, c);
+
+      const studioUrlInp = $("#studio_url_inp");
+      if (studioUrlInp) {
+        studioUrlInp.onkeydown = e => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            loadStudioUrl(studioUrlInp.value.trim());
+          }
+        };
+      }
+      const promptUrlInp = $("#studio_prompt_url_inp");
+      if (promptUrlInp) {
+        promptUrlInp.onkeydown = e => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            loadStudioUrl(promptUrlInp.value.trim());
+          }
+        };
+      }
+
       const inp = $("#studio_video_file_input");
       if (inp) {
         inp.onchange = e => {
@@ -2954,6 +3206,8 @@ function drawClipDlg(full) {
               vid.load();
               vid.play().catch(() => {});
             }
+            const ytWrap = $("#yt_player_wrap");
+            if (ytWrap) ytWrap.style.display = "none";
             const prm = $("#empty_video_prompt");
             if (prm) prm.style.display = "none";
             const mainFile = $("#file");
@@ -2971,6 +3225,10 @@ function drawClipDlg(full) {
       }
       const stg = $("#stage_169");
       if (stg) {
+        stg.onclick = e => {
+          if (e.target.closest("#box_game") || e.target.closest("#box_facecam") || e.target.closest(".empty-video-prompt")) return;
+          D.activePlayer?.togglePlay();
+        };
         stg.ondragover = e => { e.preventDefault(); };
         stg.ondrop = e => {
           e.preventDefault();
@@ -2984,6 +3242,8 @@ function drawClipDlg(full) {
               vid.load();
               vid.play().catch(() => {});
             }
+            const ytWrap = $("#yt_player_wrap");
+            if (ytWrap) ytWrap.style.display = "none";
             const prm = $("#empty_video_prompt");
             if (prm) prm.style.display = "none";
             const mainFile = $("#file");
@@ -3024,7 +3284,15 @@ function drawClipDlg(full) {
   D.sig = sig;
   if (!isSrc && $("#dposts")) put($("#dposts"), postPills(c));
 }
-$("#clipdlg").addEventListener("close", () => { $("#clipdlg").innerHTML = ""; D.jid = null; });
+$("#clipdlg").addEventListener("close", () => {
+  if (D.playTimer) { clearInterval(D.playTimer); D.playTimer = null; }
+  if (D.ytPlayer && typeof D.ytPlayer.destroy === "function") {
+    try { D.ytPlayer.destroy(); } catch {}
+    D.ytPlayer = null;
+  }
+  $("#clipdlg").innerHTML = "";
+  D.jid = null;
+});
 $("#clipdlg").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
 
 /* ============================================================ render + polling */
@@ -3402,64 +3670,67 @@ document.addEventListener("click", async e => {
       }
       return;
     }
+    if (a === "studio_load_url") {
+      const inp = $("#studio_url_inp");
+      if (inp) loadStudioUrl(inp.value.trim());
+      return;
+    }
+    if (a === "studio_load_prompt_url") {
+      const inp = $("#studio_prompt_url_inp");
+      if (inp) loadStudioUrl(inp.value.trim());
+      return;
+    }
     if (a === "tl_toggle_play") {
-      const vid = $("#edit_src_vid");
-      const btn = $("#btn_tl_play");
-      if (vid) {
-        if (vid.paused) {
-          vid.play().then(() => { if (btn) btn.innerHTML = "⏸ Pause"; }).catch(() => {});
-        } else {
-          vid.pause();
-          if (btn) btn.innerHTML = "▶ Play";
-        }
-      }
+      D.activePlayer?.togglePlay();
       return;
     }
     if (a === "tl_seek_back") {
-      const vid = $("#edit_src_vid");
-      if (vid) vid.currentTime = Math.max(0, vid.currentTime - 5);
+      const cur = D.activePlayer?.getCurrentTime() || 0;
+      D.activePlayer?.seekTo(Math.max(0, cur - 5), true);
       return;
     }
     if (a === "tl_seek_fwd") {
-      const vid = $("#edit_src_vid");
-      if (vid) vid.currentTime = Math.min(vid.duration || 9999, vid.currentTime + 5);
+      const cur = D.activePlayer?.getCurrentTime() || 0;
+      const dur = D.activePlayer?.getDuration() || 60;
+      D.activePlayer?.seekTo(Math.min(dur, cur + 5), true);
       return;
     }
     if (a === "tl_jump_start") {
-      const vid = $("#edit_src_vid");
       const c = D.isSource ? D.custom_clip : jobOf(D.jid)?.clips.find(x => x.id === D.cid);
-      if (vid && c) vid.currentTime = c.start || 0;
+      D.activePlayer?.seekTo(c?.start || 0, true);
       return;
     }
     if (a === "tl_jump_end") {
-      const vid = $("#edit_src_vid");
       const c = D.isSource ? D.custom_clip : jobOf(D.jid)?.clips.find(x => x.id === D.cid);
-      if (vid && c) vid.currentTime = c.end || vid.duration || 0;
+      D.activePlayer?.seekTo(c?.end || 0, true);
       return;
     }
     if (a === "tl_mark_in") {
-      const vid = $("#edit_src_vid");
       const c = D.isSource ? D.custom_clip : jobOf(D.jid)?.clips.find(x => x.id === D.cid);
-      if (vid && c) {
-        c.start = Math.max(0, Math.min((c.end || vid.duration || 30) - 0.5, Math.round(vid.currentTime * 10) / 10));
+      if (c) {
+        const cur = Math.round((D.activePlayer?.getCurrentTime() || 0) * 10) / 10;
+        c.start = cur;
+        if (c.end <= c.start) c.end = c.start + 5;
         const inStart = $('input[data-f="start"]');
         if (inStart) inStart.value = c.start;
-        const j = D.jid ? jobOf(D.jid) : (S.jobs[0] || null);
-        initTimelineScrubber(j, c);
-        toast(`Start set to ${c.start.toFixed(1)}s`, "ok");
-      }
-      return;
-    }
-    if (a === "tl_mark_out") {
-      const vid = $("#edit_src_vid");
-      const c = D.isSource ? D.custom_clip : jobOf(D.jid)?.clips.find(x => x.id === D.cid);
-      if (vid && c) {
-        c.end = Math.min(vid.duration || 9999, Math.max((c.start || 0) + 0.5, Math.round(vid.currentTime * 10) / 10));
         const inEnd = $('input[data-f="end"]');
         if (inEnd) inEnd.value = c.end;
         const j = D.jid ? jobOf(D.jid) : (S.jobs[0] || null);
         initTimelineScrubber(j, c);
-        toast(`End set to ${c.end.toFixed(1)}s`, "ok");
+        toast(`Start set to ${fmtTime(c.start)}`, "ok");
+      }
+      return;
+    }
+    if (a === "tl_mark_out") {
+      const c = D.isSource ? D.custom_clip : jobOf(D.jid)?.clips.find(x => x.id === D.cid);
+      if (c) {
+        const cur = Math.round((D.activePlayer?.getCurrentTime() || 0) * 10) / 10;
+        c.end = Math.max((c.start || 0) + 0.5, cur);
+        const inEnd = $('input[data-f="end"]');
+        if (inEnd) inEnd.value = c.end;
+        const j = D.jid ? jobOf(D.jid) : (S.jobs[0] || null);
+        initTimelineScrubber(j, c);
+        toast(`End set to ${fmtTime(c.end)}`, "ok");
       }
       return;
     }
