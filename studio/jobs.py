@@ -792,12 +792,13 @@ def _run_job(job):
             c.update(id=f"clip{len(job['clips']) + 1:02d}", start=round(c["start"] + shift, 2),
                      end=round(c["end"] + shift, 2), style=o["style"], layout=o["layout"],
                      captions=o.get("captions", True), status="queued", version=0)
-            # Only the gameplay layout uses a webcam, so it is only looked for then, and only once: a
-            # stream with no webcam is not looked for again on every clip of it.
-            if o["layout"] in ("gameplay", "split") and face is False:
-                face = _facecam(job)
-            if face:
-                c["facecam"] = face
+            if o.get("facecam"):
+                c["facecam"] = o["facecam"]
+            elif o["layout"] in ("gameplay", "split"):
+                if face is False or face is None:
+                    face = _facecam(job) or False
+                if face:
+                    c["facecam"] = face
             if o.get("game_area"):
                 c["game_area"] = o["game_area"]
             if o.get("facecam_pos"):

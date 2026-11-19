@@ -241,9 +241,17 @@ def _norm_box(box, src_w=1920, src_h=1080):
     if not box or len(box) != 4:
         return None
     try:
-        x, y, w, h = [int(round(float(v))) for v in box]
-        if w <= 8 or h <= 8:
+        raw_x, raw_y, raw_w, raw_h = [float(v) for v in box]
+        if raw_w <= 8 or raw_h <= 8:
             return None
+        # Scale from 1920x1080 studio canvas space to actual video resolution
+        scale_x = src_w / 1920.0
+        scale_y = src_h / 1080.0
+        x = int(round(raw_x * scale_x))
+        y = int(round(raw_y * scale_y))
+        w = int(round(raw_w * scale_x))
+        h = int(round(raw_h * scale_y))
+
         x = max(0, min(src_w - 10, x))
         y = max(0, min(src_h - 10, y))
         w = max(10, min(src_w - x, w))

@@ -2607,7 +2607,8 @@ function openSourceEditor() {
   const urlStartTime = parseTimeParam(first.url);
   const initialStart = fromMin > 0 ? Math.round(fromMin * 60 * 10) / 10 : (urlStartTime > 0 ? urlStartTime : 0);
   const toMin = Number($("#o_to")?.value) || 0;
-  const initialEnd = toMin > 0 ? Math.round(toMin * 60 * 10) / 10 : (initialStart + 30);
+  const knownDur = first.info?.duration || D.linked_info?.duration || 0;
+  const initialEnd = toMin > 0 ? Math.round(toMin * 60 * 10) / 10 : (knownDur > 0 ? knownDur : 0);
   D.custom_clip = {
     start: initialStart,
     end: initialEnd,
@@ -2616,16 +2617,26 @@ function openSourceEditor() {
     style: "bounce",
     layout: "gameplay"
   };
-  if (D.custom_clip.end <= D.custom_clip.start) D.custom_clip.end = D.custom_clip.start + 30;
+  if (knownDur > 0 && (!toMin || toMin <= 0)) {
+    D.custom_clip.end = knownDur;
+  }
   if (D.linked_info?.duration) {
-    D.custom_clip.end = Math.min(D.linked_info.duration, Math.max(D.custom_clip.start + 5, D.custom_clip.end));
+    if (!toMin || toMin <= 0) {
+      D.custom_clip.end = D.linked_info.duration;
+    } else {
+      D.custom_clip.end = Math.min(D.linked_info.duration, Math.max(D.custom_clip.start + 5, D.custom_clip.end));
+    }
   } else if (D.linked_url) {
     lookUp(D.linked_url).then(info => {
       if (info && info.duration) {
         D.linked_info = info;
         window._lastLinkedInfo = info;
         if (D.custom_clip) {
-          D.custom_clip.end = Math.min(info.duration, Math.max(D.custom_clip.start + 5, D.custom_clip.end));
+          if (!toMin || toMin <= 0) {
+            D.custom_clip.end = info.duration;
+          } else {
+            D.custom_clip.end = Math.min(info.duration, Math.max(D.custom_clip.start + 5, D.custom_clip.end));
+          }
         }
         const td = $("#txt_dur_time");
         if (td) td.textContent = fmtTime(info.duration);
@@ -2647,6 +2658,7 @@ function openClip(jid, cid) {
   D.jid = jid; D.cid = cid; D.sig = "";
   D.mode = "editor";
   const j = jobOf(jid), c = j?.clips.find(x => x.id === cid);
+  D.mock_mode = c?.file ? "video" : "layout";
   D.facecam = c?.facecam ? [...c.facecam] : (j?.facecam ? [...j.facecam] : [1360, 40, 520, 320]);
   D.game_area = c?.game_area ? [...c.game_area] : (j?.game_area ? [...j.game_area] : [656, 0, 608, 1080]);
   D.facecam_pos = c?.facecam_pos ? [...c.facecam_pos] : [160, 120, 760, 440];
@@ -2944,8 +2956,10 @@ function initTimelineScrubber(j, c) {
       const td = $("#txt_dur_time");
       if (td) td.textContent = fmtTime(dur);
       if (c.start) { try { vid.currentTime = c.start; } catch {} }
-      if (!c.end || c.end > dur || c.end === 30) {
-        c.end = Math.min(dur, Math.max((c.start || 0) + 5, 30));
+      if (D.isSource && (!Number($("#o_to")?.value))) {
+        c.end = dur;
+      } else if (!c.end || c.end > dur) {
+        c.end = dur;
       }
       syncUI();
     };
@@ -2983,11 +2997,20 @@ function initTimelineScrubber(j, c) {
     }
 
     const pbtn = $("#btn_tl_play");
+    const mpbtn = $("#btn_mock_play");
+    const isP = player.isPlaying();
     if (pbtn) {
-      if (player.isPlaying()) {
+      if (isP) {
         if (!pbtn.innerHTML.includes("Pause")) pbtn.innerHTML = "⏸ Pause";
       } else {
         if (!pbtn.innerHTML.includes("Play")) pbtn.innerHTML = "▶ Play";
+      }
+    }
+    if (mpbtn) {
+      if (isP) {
+        if (!mpbtn.innerHTML.includes("Pause")) mpbtn.innerHTML = "⏸ Pause Preview";
+      } else {
+        if (!mpbtn.innerHTML.includes("Play")) mpbtn.innerHTML = "▶ Play 9:16 Preview";
       }
     }
   }, 100);
@@ -3285,16 +3308,47 @@ function drawClipDlg(full) {
           <div style="background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px">
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700">
               <span>📱 9:16 Mobile Composite</span>
-              <span style="font-size:10px;color:#00F0FF">Drag Facecam Card Below</span>
+              ${c.file ? `<span class="pill ok" style="font-size:9px;padding:2px 8px;font-weight:700">Render Output</span>` : `<span style="font-size:10px;color:#00F0FF">Drag Facecam Card Below</span>`}
             </div>
+
+            ${c.file ? `
+            <div style="display:flex;gap:6px;width:100%">
+              <button type="button" class="area-btn ${D.mock_mode !== 'layout' ? 'active' : ''}" data-act="toggle_mock_mode" data-mode="video" style="flex:1;justify-content:center;font-size:11px;padding:5px 8px;font-weight:700">
+                ▶ Play 9:16 Video
+              </button>
+              <button type="button" class="area-btn ${D.mock_mode === 'layout' ? 'active' : ''}" data-act="toggle_mock_mode" data-mode="layout" style="flex:1;justify-content:center;font-size:11px;padding:5px 8px;font-weight:700">
+                📐 Edit Layout
+              </button>
+            </div>
+            ` : `
+            <div style="display:flex;gap:6px;width:100%">
+              <button type="button" class="area-btn primary" data-act="mock_toggle_play" id="btn_mock_play" style="flex:1;justify-content:center;font-size:11px;padding:5px 8px;font-weight:700">
+                ▶ Play 9:16 Preview
+              </button>
+            </div>
+            `}
+
             <div style="display:flex;justify-content:center;padding:4px 0">
-              <div class="area-mockup-916" id="mockup_916" style="width:140px">
-                <div class="mock-bg" id="mock_bg">${fallbackImgSrc ? `<img src="${fallbackImgSrc}" alt="">` : `<div style="width:100%;height:100%;background:linear-gradient(180deg,#161f30 0%,#0b0f17 100%)"></div>`}</div>
-                <div class="mock-fc" id="mock_fc">Facecam</div>
-                <div class="mock-hook" id="mock_hook">${esc(c.hook || "TITLE HOOK")}</div>
-                <div class="mock-caps">ANIMATED CAPTIONS</div>
+              <div class="area-mockup-916" id="mockup_916" style="width:150px;position:relative">
+                ${(c.file && D.mock_mode !== 'layout') ? `
+                  <video id="mock_rendered_video" src="${m}${esc(c.file)}?v=${c.version || 1}" poster="${m}${esc(c.cover || '')}?v=${c.version || 1}" controls playsinline loop autoplay style="width:100%;height:100%;object-fit:cover;border-radius:10px;background:#000;display:block;" preload="auto"></video>
+                ` : `
+                  <div class="mock-bg" id="mock_bg">${fallbackImgSrc ? `<img src="${fallbackImgSrc}" alt="">` : `<div style="width:100%;height:100%;background:linear-gradient(180deg,#161f30 0%,#0b0f17 100%)"></div>`}</div>
+                  <div class="mock-fc" id="mock_fc">Facecam</div>
+                  <div class="mock-hook" id="mock_hook">${esc(c.hook || "VIRAL MOMENT 🔥")}</div>
+                  <div class="mock-caps">ANIMATED CAPTIONS</div>
+                `}
               </div>
             </div>
+
+            ${c.file ? `
+            <div style="display:flex;justify-content:center;margin-top:2px">
+              <a class="btn sm primary" href="${m}${esc(c.file)}?download=1" style="font-size:11px;padding:5px 14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;background:#00F0FF;color:#000;border-radius:6px">
+                ${ic("down")} Download Vertical MP4
+              </a>
+            </div>` : ''}
+
+            ${(!c.file || D.mock_mode === 'layout') ? `
             <div style="font-size:11px;font-weight:600;color:#94a3b8;margin-top:2px">Facecam Orientation Preset:</div>
             <div class="area-btns">
               <button type="button" class="area-btn active" data-act="pos_top_center">⭐ Top-Center (Ref)</button>
@@ -3312,6 +3366,7 @@ function drawClipDlg(full) {
               <input type="range" id="sl_fc_y" min="20" max="1000" step="10" value="${D.facecam_pos?.[1] || 120}">
               <span id="txt_fc_y">${D.facecam_pos?.[1] || 120}px</span>
             </div>
+            ` : ''}
           </div>
 
           ${isSrc ? `
@@ -3367,8 +3422,10 @@ function drawClipDlg(full) {
           initTimelineScrubber(j, c);
           const dur = playerInstance.getDuration ? playerInstance.getDuration() : 0;
           if (dur && dur > 0) {
-            if (!c.end || c.end > dur || c.end <= (c.start || 0)) {
-              c.end = Math.min(dur, Math.max((c.start || 0) + 5, (c.start || 0) + 30));
+            if (isSrc && (!Number($("#o_to")?.value))) {
+              c.end = dur;
+            } else if (!c.end || c.end > dur || c.end <= (c.start || 0)) {
+              c.end = dur;
             }
             const td = $("#txt_dur_time");
             if (td) td.textContent = fmtTime(dur);
@@ -3384,8 +3441,10 @@ function drawClipDlg(full) {
           initTimelineScrubber(j, c);
           const dur = playerInstance.getDuration ? playerInstance.getDuration() : 0;
           if (dur && dur > 0) {
-            if (!c.end || c.end > dur || c.end <= (c.start || 0)) {
-              c.end = Math.min(dur, Math.max((c.start || 0) + 5, (c.start || 0) + 30));
+            if (isSrc && (!Number($("#o_to")?.value))) {
+              c.end = dur;
+            } else if (!c.end || c.end > dur || c.end <= (c.start || 0)) {
+              c.end = dur;
             }
             const td = $("#txt_dur_time");
             if (td) td.textContent = fmtTime(dur);
@@ -3859,8 +3918,10 @@ document.addEventListener("click", async e => {
       S.default_facecam_pos = D.facecam_pos;
       const c = D.custom_clip;
       if (c) {
-        if ($("#o_from")) $("#o_from").value = Math.floor((c.start || 0) / 60);
-        if ($("#o_to")) $("#o_to").value = Math.ceil((c.end || 0) / 60);
+        const fullDur = (D.linked_info?.duration) || (D.activePlayer ? D.activePlayer.getDuration() : 0);
+        const isFull = fullDur > 0 && Math.abs(c.end - fullDur) < 2 && (!c.start || c.start === 0);
+        if ($("#o_from")) $("#o_from").value = (c.start && c.start > 0) ? Math.floor(c.start / 60) : "";
+        if ($("#o_to")) $("#o_to").value = (!isFull && c.end && c.end > 0 && c.end < fullDur) ? Math.ceil(c.end / 60) : "";
       }
       const bge = $("#opt_editor_status_badge");
       if (bge) {
@@ -3874,6 +3935,20 @@ document.addEventListener("click", async e => {
     if (a === "dlg_mode") {
       D.mode = d.mode;
       drawClipDlg(true);
+      return;
+    }
+    if (a === "toggle_mock_mode") {
+      D.mock_mode = e.target.closest("[data-mode]")?.dataset?.mode || "video";
+      drawClipDlg(true);
+      return;
+    }
+    if (a === "mock_toggle_play") {
+      if (D.activePlayer) {
+        D.activePlayer.togglePlay();
+        const isP = D.activePlayer.isPlaying();
+        const pbtn = $("#btn_mock_play");
+        if (pbtn) pbtn.innerHTML = isP ? "⏸ Pause Preview" : "▶ Play 9:16 Preview";
+      }
       return;
     }
     if (a === "open_aikey") {

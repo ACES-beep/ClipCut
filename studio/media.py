@@ -133,10 +133,46 @@ def youtube_words(url: str):
     with _youtube_guard(url), _ydl({}) as ydl:
         i = ydl.extract_info(url, download=False)
         auto = i.get("automatic_captions") or {}
-        key = next((k for k in auto if k.endswith("-orig")), None)
-        if not key and i.get("language") in auto:
-            key = i["language"]
-        track = next((f for f in auto.get(key) or [] if f.get("ext") == "json3" and f.get("url")), None) if key else None
+        subs = i.get("subtitles") or {}
+
+        # Prioritize English and original language over arbitrary dictionary order
+        lang = (i.get("language") or "en").lower().split("-")[0]
+        pref_order = [
+            "en-orig", "en", "en-US", "en-GB",
+            f"{lang}-orig", lang,
+            "en-en", "en-CA", "en-AU"
+        ]
+
+        key = None
+        group = None
+        # Check human subtitles first
+        for k in pref_order:
+            if k in subs:
+                key = k
+                group = subs
+                break
+        # Then check automatic captions
+        if not key:
+            for k in pref_order:
+                if k in auto:
+                    key = k
+                    group = auto
+                    break
+        # Fallback to any english track or original language track
+        if not key:
+            for g in (subs, auto):
+                for k in g:
+                    if k.startswith("en") or k.endswith("-orig"):
+                        key = k
+                        group = g
+                        break
+                if key:
+                    break
+        if not key:
+            group = subs or auto
+            key = next(iter(group.keys()), None) if group else None
+
+        track = next((f for f in (group.get(key) if group and key else []) or [] if f.get("ext") == "json3" and f.get("url")), None)
         if not track:
             return None
         raw = ydl.urlopen(track["url"]).read(40_000_000)
