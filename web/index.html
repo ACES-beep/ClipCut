@@ -4136,21 +4136,19 @@ document.addEventListener("click", async e => {
     if (a === "detect_facecam") {
       b.disabled = true;
       try {
-        const jid = D.jid || S.jobs[0]?.id;
+        const jid = (D.isSource ? null : D.jid) || (jobOf(D.jid) ? D.jid : null);
         const currentUrl = D.linked_url || $("#studio_url_inp")?.value || $("#studio_prompt_url_inp")?.value || $("#inp_url")?.value || "";
-        const playTime = (D.activePlayer && typeof D.activePlayer.getCurrentTime === "function") ? D.activePlayer.getCurrentTime() : (D.custom_clip?.start || 0);
+        const playTime = (D.activePlayer && typeof D.activePlayer.getCurrentTime === "function")
+          ? D.activePlayer.getCurrentTime()
+          : ((D.ytPlayer && typeof D.ytPlayer.getCurrentTime === "function")
+              ? D.ytPlayer.getCurrentTime()
+              : (D.custom_clip?.start || 0));
 
         let res = null;
         if (jid) {
-          res = await api(`/api/jobs/${jid}/detect-facecam`, {
-            method: "POST",
-            body: { cid: D.cid, url: currentUrl, time: playTime }
-          });
+          res = await send(`/api/jobs/${jid}/detect-facecam`, { cid: D.cid, url: currentUrl, time: playTime });
         } else if (currentUrl) {
-          res = await api(`/api/detect-facecam`, {
-            method: "POST",
-            body: { url: currentUrl, time: playTime }
-          });
+          res = await send(`/api/detect-facecam`, { url: currentUrl, time: playTime });
         } else {
           return toast("Load or upload a video first to auto-detect facecam", "bad");
         }
