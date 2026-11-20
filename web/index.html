@@ -919,6 +919,11 @@ dialog[open]{animation:fadein .16s ease}
 .area-btn.active{background:#00F0FF;color:#000;font-weight:700}
 .area-slider{display:grid;grid-template-columns:70px 1fr 35px;gap:6px;align-items:center;font-size:10.5px}
 .area-slider input[type="range"]{width:100%;accent-color:#00F0FF;margin:0}
+.ios-emoji-btn{font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;font-size:16px;line-height:1;width:28px;height:28px;border-radius:6px;border:1px solid #2d333b;background:#161b22;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:transform .12s ease,background .15s ease;flex-shrink:0}
+.ios-emoji-btn:hover{transform:scale(1.18);background:#21262d;border-color:#444c56;z-index:2}
+.ios-emoji-btn:active{transform:scale(0.95)}
+.ios-emoji-grid-btn{font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;font-size:19px;line-height:1;height:32px;border-radius:6px;border:1px solid transparent;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:transform .1s,background .15s}
+.ios-emoji-grid-btn:hover{background:#21262d;border-color:#30363d;transform:scale(1.2)}
 </style>
 </head>
 <body>
@@ -1544,11 +1549,11 @@ function drawAdd(variant) {
         <label><input type="checkbox" id="o_captions" data-caption-toggle ${c?.captions === false ? "" : "checked"}>Generate captions</label></div>
         ${choice("o_style", Object.entries(S.status.styles).map(([k, v]) => ({v:k, label:v, prev:capPrev(k)})), c?.style ?? "bounce", c?.captions === false)}</div>
       <div class="ob"><div class="ot">Layout</div>${choice("o_layout", Object.entries(S.status.layouts).map(([k, v]) => ({v:k, label:LAYOUT_SHORT[k] || v, title:v, prev:`<span class="lay-prev ${esc(k)}"><span class="ph"><i></i></span></span>`})), c?.layout ?? "gameplay")}</div>
-      <div class="ob"><div class="ot">Viral Template (Yizerge)</div>${choice("o_template", [
-        {v:"none", label:"Standard / Clean", prev:'<span style="font-size:13px">✦</span> '},
-        {v:"twitter", label:"𝕏 Post Card", prev:'<span style="font-size:13px;font-weight:900">𝕏</span> '},
-        {v:"breaking_news", label:"Breaking News", prev:'<span style="font-size:13px">🚨</span> '},
-        {v:"tiktok_hook", label:"TikTok Banner", prev:'<span style="font-size:13px">💬</span> '}
+      <div class="ob"><div class="ot">Overlay & Title Card Template</div>${choice("o_template", [
+        {v:"none", label:"Minimal Title Badge", prev:'<span style="font-size:13px">✦</span> '},
+        {v:"twitter", label:"Social Post Card", prev:'<span style="font-size:13px;font-weight:900">𝕏</span> '},
+        {v:"breaking_news", label:"Breaking News Chyron", prev:'<span style="font-size:13px">🚨</span> '},
+        {v:"tiktok_hook", label:"Viral Retention Header", prev:'<span style="font-size:13px">🔥</span> '}
       ], c?.template ?? "none")}</div>
       <div class="ob wide"><div class="ot" style="display:flex;justify-content:space-between;align-items:center">
         <span>🪝 Hook & Narrative Arc Structure</span>
@@ -2797,6 +2802,39 @@ function updateMockHook(template, text) {
   }
 }
 
+const IOS_EMOJIS = {
+  viral: ["🔥", "⚡", "💥", "🚨", "💯", "🏆", "🥇", "🎯", "🚀", "💣", "👑", "💎", "✨", "🌟", "🧨", "📢", "👀", "🍿", "🎉", "💰"],
+  faces: ["😂", "😭", "💀", "😱", "🤯", "🥺", "😈", "🤡", "🥶", "🥵", "🤫", "🤔", "🤪", "🤩", "🥳", "🤐", "😴", "😏", "😤", "🧐"],
+  hands: ["👉", "👈", "👆", "👇", "👏", "🙌", "🤝", "🦾", "✌️", "🤞", "🤙", "👊", "🫡", "💅", "💪", "🖕", "🤛", "🤜", "👋", "✍️"],
+  gaming: ["🎮", "🕹️", "👾", "🎲", "🎙️", "🎧", "🎬", "🍿", "📺", "🛡️", "⚔️", "🏹", "🩸", "💀", "👻", "🧟", "🤖", "🏆", "🥇", "🥈"],
+  badges: ["❓", "❗", "‼️", "⚠️", "⛔", "🚫", "⭕", "❌", "🔴", "🟢", "🟡", "🟣", "💬", "💭", "🗯️", "✔️", "✅", "➕", "➖", "💲"]
+};
+
+function renderEmojiCategory(catKey) {
+  const grid = $("#ios_emoji_grid");
+  if (!grid) return;
+  const list = IOS_EMOJIS[catKey] || IOS_EMOJIS.viral;
+  grid.innerHTML = list.map(em => `
+    <button type="button" class="ios-emoji-grid-btn" data-act="add_emoji" data-em="${em}" title="Insert ${em}">
+      ${em}
+    </button>
+  `).join("");
+}
+
+function insertEmoji(em) {
+  const titleInp = $("#clip_title_inp") || $('input[data-f="title"]');
+  if (!titleInp) return;
+  const start = titleInp.selectionStart ?? titleInp.value.length;
+  const end = titleInp.selectionEnd ?? titleInp.value.length;
+  const val = titleInp.value;
+  titleInp.value = val.substring(0, start) + em + val.substring(end);
+  const pos = start + em.length;
+  titleInp.focus();
+  titleInp.setSelectionRange(pos, pos);
+  titleInp.dispatchEvent(new Event("input", { bubbles: true }));
+  titleInp.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 function syncAreaDOM() {
   const stage = $("#stage_169");
   if (!stage) return;
@@ -2828,23 +2866,69 @@ function syncAreaDOM() {
   const mock = $("#mockup_916");
   const mfc = $("#mock_fc");
   const mhook = $("#mock_hook");
+  const mbg = $("#mock_bg");
+  const isSrc = D.isSource;
+  const j = D.jid ? jobOf(D.jid) : (S.jobs[0] || null);
+  const c = isSrc ? (D.custom_clip || {}) : j?.clips?.find(x => x.id === D.cid);
+  const layout = $("#clip_layout_sel")?.value || c?.layout || "gameplay";
+  const template = $("#clip_template_sel")?.value || c?.template || "none";
+
   if (mock && mfc) {
     const mw = mock.clientWidth || 140, mh = mock.clientHeight || 248;
     const smx = mw / 1080, smy = mh / 1920;
     const fp = D.facecam_pos || [160, 120, 760, 440];
-    const px = fp[0] * smx, py = fp[1] * smy, pw = fp[2] * smx, ph = fp[3] * smy;
-    mfc.style.left = px + "px";
-    mfc.style.top = py + "px";
-    mfc.style.width = pw + "px";
-    mfc.style.height = ph + "px";
+
+    if (layout === "split") {
+      mfc.style.display = "flex";
+      mfc.style.left = "0px";
+      mfc.style.top = "0px";
+      mfc.style.width = "100%";
+      mfc.style.height = (mh * (720 / 1920)) + "px";
+      mfc.style.borderRadius = "8px 8px 0 0";
+      if (mbg) {
+        mbg.style.top = (mh * (720 / 1920)) + "px";
+        mbg.style.height = (mh * (1200 / 1920)) + "px";
+      }
+    } else if (layout === "crop" || layout === "blur" || layout === "zoom") {
+      mfc.style.display = "none";
+      if (mbg) {
+        mbg.style.top = "0px";
+        mbg.style.height = "100%";
+      }
+    } else {
+      mfc.style.display = "flex";
+      mfc.style.borderRadius = "8px";
+      const px = fp[0] * smx, py = fp[1] * smy, pw = fp[2] * smx, ph = fp[3] * smy;
+      mfc.style.left = px + "px";
+      mfc.style.top = py + "px";
+      mfc.style.width = pw + "px";
+      mfc.style.height = ph + "px";
+      if (mbg) {
+        mbg.style.top = "0px";
+        mbg.style.height = "100%";
+      }
+    }
 
     if (mhook) {
-      if (fp[1] < 900) {
-        mhook.style.top = (py + ph + 8) + "px";
+      if (template === "breaking_news") {
+        mhook.style.top = "auto";
+        mhook.style.bottom = "36px";
+        mhook.style.left = "50%";
+        mhook.style.transform = "translateX(-50%)";
+      } else if (layout === "split") {
+        mhook.style.bottom = "auto";
+        mhook.style.top = ((mh * (720 / 1920)) + 6) + "px";
+        mhook.style.left = "50%";
+        mhook.style.transform = "translateX(-50%)";
+      } else if (fp[1] < 900 && layout === "gameplay") {
+        const ph = fp[3] * smy;
+        mhook.style.bottom = "auto";
+        mhook.style.top = ((fp[1] * smy) + ph + 8) + "px";
         mhook.style.left = "50%";
         mhook.style.transform = "translateX(-50%)";
       } else {
-        mhook.style.top = "24px";
+        mhook.style.bottom = "auto";
+        mhook.style.top = "20px";
         mhook.style.left = "50%";
         mhook.style.transform = "translateX(-50%)";
       }
@@ -3239,6 +3323,9 @@ function drawClipDlg(full) {
 
   const m = j ? `/media/${j.id}/` : "";
   const sig = isSrc ? "source" : (c.status + c.version);
+  if (!full && sig !== D.sig) {
+    full = true;
+  }
   
   const pickedFile = $("#file")?.files?.[0];
   let videoSrc = "";
@@ -3534,12 +3621,12 @@ function drawClipDlg(full) {
                 <textarea data-f="payoff" rows="2" placeholder="The clutch win, fail, punchline, or answer...">${esc(c.payoff || '')}</textarea>
               </label>
             </div>
-            <label class="f">Viral Template (Yizerge Style)
+            <label class="f">Overlay & Title Card Template
               <select data-f="template" id="clip_template_sel">
-                <option value="none" ${c.template === 'none' || !c.template ? 'selected' : ''}>✦ Standard Title Badge</option>
-                <option value="twitter" ${c.template === 'twitter' ? 'selected' : ''}>𝕏 Post Card (Verified + Handle + Tweet)</option>
-                <option value="breaking_news" ${c.template === 'breaking_news' ? 'selected' : ''}>🚨 Breaking News Lower-Third Chyron</option>
-                <option value="tiktok_hook" ${c.template === 'tiktok_hook' ? 'selected' : ''}>💬 TikTok Retention Banner</option>
+                <option value="none" ${c.template === 'none' || !c.template ? 'selected' : ''}>✦ Minimal Title Badge (Clean Box)</option>
+                <option value="twitter" ${c.template === 'twitter' ? 'selected' : ''}>𝕏 Social Post Card (Handle + Verified Badge)</option>
+                <option value="breaking_news" ${c.template === 'breaking_news' ? 'selected' : ''}>🚨 Breaking News Lower-Third (Chyron Banner)</option>
+                <option value="tiktok_hook" ${c.template === 'tiktok_hook' ? 'selected' : ''}>🔥 Viral Retention Header (Bold Accent Box)</option>
               </select>
             </label>
             <label class="sw"><input type="checkbox" data-f="captions" data-caption-toggle ${c.captions === false ? "" : "checked"}>Generate captions</label>
@@ -3554,7 +3641,39 @@ function drawClipDlg(full) {
             </div>
 
             <h3>Post text</h3>
-            <label class="f">Title<input data-f="title" value="${esc(c.title)}"></label>
+            <div class="f" style="margin-bottom:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:11.5px;font-weight:700;color:var(--text,#f0f6fc);display:flex;align-items:center;gap:6px">
+                  <span>Title</span>
+                  <span style="font-size:9.5px;font-weight:700;color:#00F0FF;background:rgba(0,240,255,0.1);padding:1px 6px;border-radius:4px;border:1px solid rgba(0,240,255,0.25)">🍎 iOS Emojis</span>
+                </span>
+                <button type="button" class="btn sm ghost" data-act="toggle_emoji_palette" style="padding:1px 8px;font-size:11px;height:22px;border-radius:4px;border:1px solid #30363d;color:#cbd5e1;cursor:pointer" title="Toggle full iOS emoji drawer">
+                  😀 All Emojis ▾
+                </button>
+              </div>
+
+              <!-- Quick Popular iOS Emojis Row -->
+              <div class="ios-emoji-quick-bar" style="display:flex;align-items:center;gap:4px;overflow-x:auto;padding:2px 0 6px 0;scrollbar-width:thin">
+                ${["🔥","😱","💀","🤯","🚨","👀","💯","👑","⚡","😭","🎯","🎮","✨","🍿","🚀","😈","🥶","🤫","🦾","🧢"].map(em => `
+                  <button type="button" class="ios-emoji-btn" data-act="add_emoji" data-em="${em}" title="Insert ${em}">${em}</button>
+                `).join("")}
+              </div>
+
+              <!-- Expandable Full Categorized iOS Emoji Drawer -->
+              <div id="ios_emoji_drawer" style="display:none;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:8px;margin-bottom:8px">
+                <div style="display:flex;gap:4px;border-bottom:1px solid #21262d;padding-bottom:6px;margin-bottom:6px;overflow-x:auto" id="emoji_cat_bar">
+                  <button type="button" class="area-btn active" data-act="em_cat" data-cat="viral">🔥 Viral</button>
+                  <button type="button" class="area-btn" data-act="em_cat" data-cat="faces">😂 Faces</button>
+                  <button type="button" class="area-btn" data-act="em_cat" data-cat="hands">👉 Hands</button>
+                  <button type="button" class="area-btn" data-act="em_cat" data-cat="gaming">🎮 Gaming</button>
+                  <button type="button" class="area-btn" data-act="em_cat" data-cat="badges">⚡ Badges</button>
+                </div>
+                <div id="ios_emoji_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(32px,1fr));gap:3px;max-height:130px;overflow-y:auto;padding:2px">
+                </div>
+              </div>
+
+              <input data-f="title" id="clip_title_inp" value="${esc(c.title)}" placeholder="Add a title..." style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Apple Color Emoji','Segoe UI Emoji',sans-serif">
+            </div>
             <label class="f">Description<textarea data-f="description" rows="2">${esc(c.description)}</textarea></label>
             
             <button class="btn primary" style="background:#00F0FF;color:#000;font-weight:800;height:42px;margin-top:6px" data-act="remake">
@@ -3721,6 +3840,14 @@ function drawClipDlg(full) {
         selTpl.addEventListener("change", e => {
           c.template = e.target.value;
           updateMockHook(e.target.value, inHook ? inHook.value : c.hook);
+          syncAreaDOM();
+        });
+      }
+      const selLay = $("#clip_layout_sel");
+      if (selLay) {
+        selLay.addEventListener("change", e => {
+          c.layout = e.target.value;
+          syncAreaDOM();
         });
       }
       const inStart = $('input[data-f="start"]'), inEnd = $('input[data-f="end"]');
@@ -4285,10 +4412,33 @@ document.addEventListener("click", async e => {
       toast("Set to Bottom-Right Corner", "ok");
       return;
     }
+    if (a === "add_emoji") {
+      const em = d.em || b.dataset.em || b.textContent.trim();
+      insertEmoji(em);
+      return;
+    }
+    if (a === "toggle_emoji_palette") {
+      const drw = $("#ios_emoji_drawer");
+      if (drw) {
+        const isHidden = drw.style.display === "none";
+        drw.style.display = isHidden ? "block" : "none";
+        if (isHidden) renderEmojiCategory("viral");
+      }
+      return;
+    }
+    if (a === "em_cat") {
+      const cat = d.cat || b.dataset.cat || "viral";
+      $$("#emoji_cat_bar .area-btn").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      renderEmojiCategory(cat);
+      return;
+    }
     if (a === "remake") {
       const body = {}; $$("#clipdlg [data-f]").forEach(i => {
         body[i.dataset.f] = i.type === "checkbox" ? i.checked : i.type === "number" ? Number(i.value) : i.value;
       });
+      if (body.start !== undefined && body.start !== null) body.start = parseTimeToSec(body.start);
+      if (body.end !== undefined && body.end !== null) body.end = parseTimeToSec(body.end);
       if (D.facecam) body.facecam = D.facecam;
       if (D.game_area) body.game_area = D.game_area;
       if (D.facecam_pos) body.facecam_pos = D.facecam_pos;

@@ -383,7 +383,17 @@ def request_render(jid, cid, changes: dict):
         new.update(clean_options({"captions": changes["captions"]}))
     for k in ("start", "end"):
         if k in changes:
-            new[k] = round(float(changes[k]), 2)
+            v = changes[k]
+            if isinstance(v, str) and ":" in v:
+                try:
+                    parts = [float(p) for p in v.strip().split(":")]
+                    if len(parts) == 3:
+                        v = parts[0] * 3600 + parts[1] * 60 + parts[2]
+                    elif len(parts) == 2:
+                        v = parts[0] * 60 + parts[1]
+                except Exception:
+                    pass
+            new[k] = round(float(v), 2)
             new.pop("fixed_words", None)
             new.pop("fixed_for", None)
             new.pop("exact_words", None)
