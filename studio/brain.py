@@ -346,10 +346,14 @@ def fallback_by_loudness(db, words, n, max_len, duration, video_title="", hook_s
         last_sentence = sentences[-1] if sentences else text
         payoff_text = f"Climax & resolution: '{last_sentence[:60]}'"
 
+        # Calculate dynamic prediction score based on reaction intensity (z-score) and ranking
+        z_peak = float(z[sec]) if sec < len(z) else 1.5
+        dyn_score = int(min(96, max(75, round(78.0 + min(18.0, max(0.0, z_peak - 1.2) * 5.0) - (len(picks) * 1.5)))))
+
         picks.append({
             "start": s,
             "end": e,
-            "score": 85,
+            "score": dyn_score,
             "category": cat,
             "hook": clean_hook,
             "story": story_text,
@@ -419,7 +423,7 @@ def find_clips(words, db, duration, title="", uploader="", max_clips=6, min_len=
                 "hook": cm["title"].upper()[:45],
                 "title": cm["title"][:90],
                 "description": f"Viewer comment highlight ({cm['likes']} likes)",
-                "score": 9.5
+                "score": 95
             })
 
     # Seed candidates from VOD live chat reaction spikes in this time window
@@ -433,7 +437,7 @@ def find_clips(words, db, duration, title="", uploader="", max_clips=6, min_len=
                 "hook": "CHAT HYPE MOMENT 🔥",
                 "title": f"Live chat spike ({cs['messages']} messages)",
                 "description": f"Viewer reaction burst with z-score {cs['z_score']}",
-                "score": 9.8
+                "score": 98
             })
 
     # Apply 70% Most Replayed heatmap priority weighting & comment/chat score adjustments
@@ -441,7 +445,7 @@ def find_clips(words, db, duration, title="", uploader="", max_clips=6, min_len=
     for c in found:
         abs_start = float(c.get("start", 0)) + time_offset
         abs_end = float(c.get("end", abs_start + 30)) + time_offset
-        base_sc = _num(c.get("score", 7.0))
+        base_sc = _num(c.get("score", 75.0))
         final_sc, reason = heatmap.calculate_priority_score(
             base_sc, abs_start, abs_end, heatmap_peaks, comment_highlights, chat_spikes
         )

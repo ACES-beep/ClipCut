@@ -172,13 +172,17 @@ def analyze_chat_replay(chat_messages: list, duration: float) -> list:
 def calculate_priority_score(base_score: float, clip_start: float, clip_end: float,
                              heatmap_peaks: list = None, comment_highlights: list = None, chat_spikes: list = None) -> tuple:
     """
-    Calculates final composite clip score incorporating:
+    Calculates final composite clip score on a 0-100 scale incorporating:
     - 70% Most Replayed heatmap priority rule.
     - Timestamped comments bonus.
     - Chat replay reaction spikes bonus for VODs.
     Returns (final_score, reason_note).
     """
-    final_score = float(base_score or 5.0)
+    raw_base = float(base_score or 75.0)
+    # If legacy 0-10 score is passed, normalize to 0-100
+    if 0.0 < raw_base <= 10.0:
+        raw_base *= 10.0
+    final_score = raw_base
     reasons = []
 
     # 1. 70% Heatmap Priority Rule
@@ -190,26 +194,26 @@ def calculate_priority_score(base_score: float, clip_start: float, clip_end: flo
                 best_hm_val = hm["value"]
 
     if best_hm_val > 0.0:
-        # Scale: 70% weight on heatmap retention peak (0-10 scale), 30% on base AI/audio score
-        heatmap_score_10 = best_hm_val * 10.0
-        final_score = (final_score * 0.3) + (heatmap_score_10 * 0.7)
+        # Scale: 70% weight on heatmap retention peak (0-100 scale), 30% on base AI/audio score
+        heatmap_score_100 = best_hm_val * 100.0
+        final_score = (final_score * 0.3) + (heatmap_score_100 * 0.7)
         reasons.append(f"Most Replayed peak ({int(best_hm_val * 100)}% replay intensity)")
 
-    # 2. Timestamped Comments
+    # 2. Timestamped Comments (up to +12 bonus points on 100 scale)
     for cm in (comment_highlights or []):
         if clip_start - 5 <= cm["timestamp"] <= clip_end + 5:
-            final_score = min(10.0, final_score + 1.5)
+            final_score = min(99.0, final_score + 12.0)
             reasons.append(f"Viewer comment: \"{cm['title'][:35]}\"")
             break
 
-    # 3. Live Chat Reaction Spikes (Completed Streams)
+    # 3. Live Chat Reaction Spikes (up to +15 bonus points on 100 scale)
     for cs in (chat_spikes or []):
         overlap = max(0.0, min(clip_end, cs["end"]) - max(clip_start, cs["start"]))
         if overlap > 5.0:
-            final_score = min(10.0, final_score + 2.0)
+            final_score = min(99.0, final_score + 15.0)
             reasons.append(f"Live chat hype spike ({cs['messages']} msgs, z={cs['z_score']})")
             break
 
-    final_score = round(max(1.0, min(10.0, final_score)), 1)
+    final_score = int(round(max(25.0, min(99.0, final_score))))
     note = " · ".join(reasons) if reasons else "Audio / transcript highlight"
     return final_score, note
