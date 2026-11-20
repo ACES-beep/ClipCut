@@ -408,9 +408,22 @@ def request_render(jid, cid, changes: dict):
             new["end"] = clip["end"]
         else:
             raise ValueError("A clip can be 3 to 180 seconds long.")
+    if "show_title" in changes:
+        new["show_title"] = bool(changes["show_title"])
+        new["show_hook"] = new["show_title"]
+    elif "show_hook" in changes:
+        new["show_title"] = bool(changes["show_hook"])
+        new["show_hook"] = new["show_title"]
+
     for k in ("hook", "title", "description", "style", "layout", "template", "story", "payoff"):
         if k in changes:
-            new[k] = str(changes[k])[:{"hook": 80, "title": 100, "description": 2000, "story": 500, "payoff": 500}.get(k, 30)]
+            new[k] = str(changes[k])[:{"hook": 100, "title": 100, "description": 2000, "story": 500, "payoff": 500}.get(k, 30)]
+
+    # Keep hook synchronized with title so whatever user types into Title displays in the video banner
+    if "title" in changes and changes["title"]:
+        new["hook"] = new["title"]
+    elif "hook" in changes and changes["hook"] and not new.get("title"):
+        new["title"] = new["hook"]
     for k in ("facecam", "game_area", "facecam_pos"):
         if k in changes:
             v = changes[k]
@@ -453,7 +466,11 @@ def render_one(job, clip, words):
                 pass
         elif clip.get("exact_words"):
             words = clip["exact_words"]
-        local = dict(clip, start=clip["start"] - off, end=clip["end"] - off, hook=roman.to_roman(clip.get("hook") or ""))
+        show_title = clip.get("show_title", clip.get("show_hook", True))
+        title_text = (clip.get("title") or clip.get("hook") or "") if show_title else ""
+        local = dict(clip, start=clip["start"] - off, end=clip["end"] - off,
+                     hook=roman.to_roman(title_text) if title_text else "",
+                     show_title=show_title)
         near = _caption_words(job, clip, words, off) if clip.get("captions", True) else []
         meta = media.probe(src)
         src_w = meta.get("width") or job.get("width", 1920)

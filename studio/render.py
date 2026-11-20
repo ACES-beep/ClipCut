@@ -138,6 +138,8 @@ def geometry(src_w, src_h, layout):
 
 def _hook_events(hook, dur, y, template="none"):
     """The heading / viral template card: X post card, breaking news chyron, tiktok hook, or clean box."""
+    if not hook or not str(hook).strip():
+        return []
     words = hook.split()
     if not words:
         return []
@@ -450,7 +452,9 @@ def render_clip(src: Path, out_dir: Path, name: str, clip: dict, words: list, sr
     if layout == "gameplay" and not (face and len(face) == 4):
         layout = "crop"     # no webcam found: the game fills the screen
     hook_y = _hook_y(layout, hook_y, face, facecam_pos)
-    ass = build_ass(words if clip.get("captions", True) else [], start, end, clip.get("hook", ""), clip.get("style", "bounce"),
+    show_title = clip.get("show_title", clip.get("show_hook", True))
+    hook_text = (clip.get("hook") or clip.get("title") or "") if show_title else ""
+    ass = build_ass(words if clip.get("captions", True) else [], start, end, hook_text, clip.get("style", "bounce"),
                     clip.get("highlight_words", []), hook_y, cap_y, template=clip.get("template", "none"))
     work = Path(tempfile.mkdtemp(prefix="pk"))
     try:
