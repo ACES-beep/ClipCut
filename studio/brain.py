@@ -504,9 +504,20 @@ def look_for_facecam(jpeg: bytes, timeout=None) -> dict:
         return {"looked": False, "box": None}
     if sent or wrote:
         usage.record(sent, wrote, "Webcam: one frame")
+    def _parse_coord(v_str):
+        try:
+            v = float(v_str)
+            if v <= 1.0:
+                return max(0.0, v)
+            if v <= 100.0:
+                return max(0.0, v / 100.0)
+            return max(0.0, min(1.0, v / 1000.0))
+        except Exception:
+            return 0.0
+
     m = _FACE_BOX.search(text or "")
     if m:
-        x, y, w, h = (max(0.0, min(1.0, float(v) / 100.0)) for v in m.groups())
+        x, y, w, h = (_parse_coord(v) for v in m.groups())
         return {"looked": True, "box": (x, y, w, h)}
     said_no = re.search(r"\bno\s*(?:web\s*-?\s*)?cam\b|\bnot\s+(?:visible|there|present)\b", text or "", re.I)
     if said_no:

@@ -100,20 +100,15 @@ def _ydl(opts):
     # a channel or playlist link is answered as "a list" straight away, never walked video by video
     base = {
         "noplaylist": True, "quiet": True, "no_warnings": True, "logger": _Quiet(),
-        "extract_flat": "in_playlist", "playlistend": 1, "socket_timeout": 20,
+        "extract_flat": "in_playlist", "playlistend": 1, "socket_timeout": 25,
         "concurrent_fragment_downloads": 4,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android", "ios", "web"]
-            }
-        }
     }
     return yt_dlp.YoutubeDL({**base, **opts})
 
 
-def _video_format(height=1080):
-    # Prefer highest quality video (1080p+ with high bitrate) and merge with best audio
-    h = max(1080, int(height or 1080))
+def _video_format(height=1440):
+    # Select highest quality stream matching or up to the requested resolution, merged with best audio
+    h = int(height or 1440)
     return f"bv*[height<={h}]+ba/bv*+ba/b[height<={h}]/b"
 
 

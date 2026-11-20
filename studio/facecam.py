@@ -362,6 +362,15 @@ def detect(path: str | Path, ask=None) -> dict | None:
         seen = _seen(path, hinted, w, h, still, light)
         if seen:
             return seen
+        # If AI found a webcam, trust the AI bounding box directly
+        fx, fy, fw, fh = hinted
+        x0, y0 = int(round(fx * w)), int(round(fy * h))
+        bw, bh = int(round(fw * w)), int(round(fh * h))
+        return {
+            "x": x0, "y": y0, "w": bw, "h": bh,
+            "corner": _corner(x0, y0, x0 + bw, y0 + bh, w, h),
+            "score": 90.0, "conf": "high"
+        }
     if not found:
         return None
     return _finish(path, found[0], w, h, still)

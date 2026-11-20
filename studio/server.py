@@ -970,20 +970,82 @@ def job_frame(jid: str, t: float = 2.0):
     return FileResponse(out_frame, media_type="image/jpeg")
 
 
+@app.post("/api/detect-facecam")
+def detect_facecam_standalone_route(body: dict = Body(...)):
+    url = (body.get("url") or "").strip()
+    if not url:
+        raise HTTPException(400, "A video URL is required.")
+    at_time = float(body.get("time") or 30.0)
+    td = Path(tempfile.mkdtemp(prefix="fc_detect_"))
+    try:
+        sample = media.download_section(url, td, "sample", at_time, at_time + 4.0, height=720)
+        box = facecam.detect(sample, ask=brain.look_for_facecam)
+        if box:
+            w, h = facecam._size(sample)
+            scale_x = 1920.0 / float(w or 1920)
+            scale_y = 1080.0 / float(h or 1080)
+            fc_1920 = [
+                int(round(box["x"] * scale_x)),
+                int(round(box["y"] * scale_y)),
+                int(round(box["w"] * scale_x)),
+                int(round(box["h"] * scale_y))
+            ]
+            return {"ok": True, "facecam": fc_1920, "conf": box.get("conf")}
+        return {"ok": False, "message": "No facecam detected in this frame."}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    finally:
+        shutil.rmtree(td, ignore_errors=True)
+
+
 @app.post("/api/jobs/{jid}/detect-facecam")
-def detect_facecam_route(jid: str):
+def detect_facecam_route(jid: str, body: dict = Body(None)):
     job = _job_or_404(jid)
-    src = job.get("source_path")
+    b = body or {}
+    cid = b.get("cid")
+    src = None
+    if cid:
+        for fname in (f"{cid}.src.mp4", f"{cid}.mp4"):
+            candidate = Path(job["dir"]) / "clips" / fname
+            if candidate.is_file():
+                src = str(candidate)
+                break
+
     if not src or not Path(src).is_file():
-        for p in Path(job["dir"]).glob("*.mp4"):
-            src = str(p)
-            break
+        sp = job.get("source_path")
+        if sp and Path(sp).is_file():
+            src = str(sp)
+
     if not src or not Path(src).is_file():
-        raise HTTPException(400, "Source video is not available locally.")
+        candidates = list(Path(job["dir"]).rglob("*.mp4"))
+        if candidates:
+            src_files = [p for p in candidates if ".src." in p.name]
+            src = str(src_files[0] if src_files else candidates[0])
+
+    url = b.get("url") or job.get("source", {}).get("url") or job.get("url")
+    if (not src or not Path(src).is_file()) and url:
+        at_time = float(b.get("time") or 30.0)
+        cache_dir = Path(job["dir"]) / "cache"
+        try:
+            src = str(media.download_section(url, cache_dir, "sample_fc", at_time, at_time + 4.0, height=720))
+        except Exception:
+            src = None
+
+    if not src or not Path(src).is_file():
+        raise HTTPException(400, "Source video is not available locally yet. Please wait for the video to download.")
     try:
         box = facecam.detect(src, ask=brain.look_for_facecam)
         if box:
-            return {"ok": True, "facecam": [box["x"], box["y"], box["w"], box["h"]], "conf": box.get("conf")}
+            w, h = facecam._size(src)
+            scale_x = 1920.0 / float(w or 1920)
+            scale_y = 1080.0 / float(h or 1080)
+            fc_1920 = [
+                int(round(box["x"] * scale_x)),
+                int(round(box["y"] * scale_y)),
+                int(round(box["w"] * scale_x)),
+                int(round(box["h"] * scale_y))
+            ]
+            return {"ok": True, "facecam": fc_1920, "conf": box.get("conf")}
     except Exception as e:
         raise HTTPException(500, str(e))
     return {"ok": False, "message": "No facecam detected"}
