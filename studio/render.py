@@ -270,6 +270,9 @@ def _generate_title_card_image(hook_text: str, template: str, hook_y: int, work_
             runs.append((curr, curr_is_em))
         return runs
 
+    font_dir = Path(__file__).resolve().parent / "fonts"
+    poppins_font = str(font_dir / "Poppins-ExtraBold.ttf")
+
     def get_emoji_font(size):
         for name in ('seguiemj.ttf', 'Apple Color Emoji.ttf', 'NotoColorEmoji.ttf'):
             try:
@@ -279,11 +282,23 @@ def _generate_title_card_image(hook_text: str, template: str, hook_y: int, work_
         return ImageFont.load_default()
 
     def draw_runs(d, runs, start_x, y, f_txt, f_em, color):
+        try:
+            txt_bb = f_txt.getbbox('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+            cap_center = (txt_bb[1] + txt_bb[3]) / 2
+        except Exception:
+            cap_center = 0
+
         x = start_x
         for chunk, is_em in runs:
             font = f_em if is_em else f_txt
             if is_em:
-                d.text((x, y), chunk, font=font, embedded_color=True)
+                try:
+                    em_bb = font.getbbox(chunk)
+                    em_center = (em_bb[1] + em_bb[3]) / 2 if em_bb else 0
+                    y_off = int(round(cap_center - em_center))
+                except Exception:
+                    y_off = 0
+                d.text((x, y + y_off), chunk, font=font, embedded_color=True)
             else:
                 d.text((x, y), chunk, font=font, fill=color)
             x += font.getlength(chunk)
@@ -302,13 +317,13 @@ def _generate_title_card_image(hook_text: str, template: str, hook_y: int, work_
         d.rounded_rectangle((x0, y0, x1, y1), radius=24, fill=(255, 255, 255, 255))
         av_cx, av_cy, av_r = x0 + 64, y0 + 56, 26
         d.ellipse((av_cx - av_r, av_cy - av_r, av_cx + av_r, av_cy + av_r), fill=(240, 155, 29, 255))
-        f_av = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 26)
+        f_av = ImageFont.truetype(poppins_font, 26)
         d.text((av_cx - 8, av_cy - 16), "𝕏", font=f_av, fill=(255, 255, 255, 255))
-        f_hdr = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 30)
-        f_sub = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 22)
+        f_hdr = ImageFont.truetype(poppins_font, 30)
+        f_sub = ImageFont.truetype(poppins_font, 22)
         d.text((x0 + 104, y0 + 34), "ClipCut ✓", font=f_hdr, fill=(20, 16, 14, 255))
         d.text((x0 + 104, y0 + 68), "@viral_moments", font=f_sub, fill=(113, 100, 83, 255))
-        f_txt = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 38)
+        f_txt = ImageFont.truetype(poppins_font, 38)
         f_em = get_emoji_font(38)
         lines = [" ".join(words)]
         if runs_width(split_text_emojis(lines[0]), f_txt, f_em) > (bw - 100) and len(words) > 1:
@@ -325,17 +340,17 @@ def _generate_title_card_image(hook_text: str, template: str, hook_y: int, work_
     elif template == "breaking_news":
         bar_y = max(int(hook_y), 1420)
         d.rectangle((0, bar_y - 68, W, bar_y), fill=(230, 26, 30, 255))
-        f_bn = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 38)
+        f_bn = ImageFont.truetype(poppins_font, 38)
         f_bn_em = get_emoji_font(38)
         draw_runs(d, split_text_emojis("🚨 BREAKING NEWS"), 48, bar_y - 56, f_bn, f_bn_em, (255, 255, 255, 255))
         d.rectangle((0, bar_y, W, bar_y + 88), fill=(10, 10, 10, 255))
-        f_txt = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 44)
-        f_em = get_emoji_font(44)
+        f_txt = ImageFont.truetype(poppins_font, 44)
+        f_em = get_emoji_font(42)
         draw_runs(d, split_text_emojis(hook_text), 48, bar_y + 20, f_txt, f_em, (0, 240, 255, 255))
 
     elif template == "tiktok_hook":
-        f_txt = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 44)
-        f_em = get_emoji_font(44)
+        f_txt = ImageFont.truetype(poppins_font, 44)
+        f_em = get_emoji_font(42)
         lines = [" ".join(words)]
         if runs_width(split_text_emojis(lines[0]), f_txt, f_em) > 860 and len(words) > 1:
             cut = min(range(1, len(words)), key=lambda i: max(
@@ -357,8 +372,8 @@ def _generate_title_card_image(hook_text: str, template: str, hook_y: int, work_
 
     else:
         # Standard Minimal Clean Box
-        f_txt = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 46)
-        f_em = get_emoji_font(46)
+        f_txt = ImageFont.truetype(poppins_font, 46)
+        f_em = get_emoji_font(44)
         lines = [" ".join(words)]
         if runs_width(split_text_emojis(lines[0]), f_txt, f_em) > 840 and len(words) > 1:
             cut = min(range(1, len(words)), key=lambda i: max(
