@@ -513,4 +513,3 @@ def _render_in(work: Path, src: Path, out_dir: Path, name: str, start, end, layo
     for ext in ("mp4", "jpg", "ass"):
         shutil.move(str(work / f"{name}.{ext}"), str(out_dir / f"{name}.{ext}"))
     return {"file": f"{name}.mp4", "cover": f"{name}.jpg", "layout": layout}
-    return {"file": f"{name}.mp4", "cover": f"{name}.jpg", "layout": layout}
