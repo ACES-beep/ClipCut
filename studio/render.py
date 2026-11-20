@@ -350,15 +350,15 @@ def _filter(layout, fg_h, facecam=None, game_area=None, facecam_pos=None, src_w=
         BOT_H = H - TOP_H
         if fc_box:
             fx, fy, fw, fh = fc_box
-            fc_f = f"[0:v]crop={fw}:{fh}:{fx}:{fy},scale={W}:{TOP_H}:force_original_aspect_ratio=increase,crop={W}:{TOP_H},setsar=1[top];"
+            fc_f = f"[0:v]crop={fw}:{fh}:{fx}:{fy},scale={W}:{TOP_H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{TOP_H},setsar=1[top];"
         else:
-            fc_f = f"[0:v]scale={W}:{TOP_H}:force_original_aspect_ratio=increase,crop={W}:{TOP_H},setsar=1[top];"
+            fc_f = f"[0:v]scale={W}:{TOP_H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{TOP_H},setsar=1[top];"
 
         if gm_box:
             gx, gy, gw, gh = gm_box
-            gm_f = f"[0:v]crop={gw}:{gh}:{gx}:{gy},scale={W}:{BOT_H}:force_original_aspect_ratio=increase,crop={W}:{BOT_H},setsar=1[bot];"
+            gm_f = f"[0:v]crop={gw}:{gh}:{gx}:{gy},scale={W}:{BOT_H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{BOT_H},setsar=1[bot];"
         else:
-            gm_f = f"[0:v]scale={W}:{BOT_H}:force_original_aspect_ratio=increase,crop={W}:{BOT_H},setsar=1[bot];"
+            gm_f = f"[0:v]scale={W}:{BOT_H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{BOT_H},setsar=1[bot];"
 
         return f"[0:v]fps={config.OUT_FPS},split=2[in_fc][in_gm];" + fc_f.replace("[0:v]", "[in_fc]") + gm_f.replace("[0:v]", "[in_gm]") + "[top][bot]vstack=inputs=2[v0];"
 
@@ -368,9 +368,9 @@ def _filter(layout, fg_h, facecam=None, game_area=None, facecam_pos=None, src_w=
         fx, fy, fw, fh = fc_box
         if gm_box:
             gx, gy, gw, gh = gm_box
-            base_crop = f"crop={gw}:{gh}:{gx}:{gy},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1"
+            base_crop = f"crop={gw}:{gh}:{gx}:{gy},scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},setsar=1"
         else:
-            base_crop = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1"
+            base_crop = f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},setsar=1"
 
         if facecam_pos and len(facecam_pos) == 4:
             px, py, pw, ph = [int(round(float(v))) for v in facecam_pos]
@@ -391,20 +391,20 @@ def _filter(layout, fg_h, facecam=None, game_area=None, facecam_pos=None, src_w=
         if mask_file:
             return (f"[0:v]fps={config.OUT_FPS},split=2[base_in][fc_in];"
                     f"[base_in]{base_crop}[b];"
-                    f"[fc_in]crop={fw}:{fh}:{fx}:{fy},scale={pw}:{ph},setsar=1,format=yuva420p[fc_scaled];"
+                    f"[fc_in]crop={fw}:{fh}:{fx}:{fy},scale={pw}:{ph}:flags=lanczos,setsar=1,format=yuva420p[fc_scaled];"
                     f"movie={mask_file}[fc_mask];"
                     f"[fc_scaled][fc_mask]alphamerge[p];"
                     f"[b][p]overlay={px}:{py}[v0];")
         return (f"[0:v]fps={config.OUT_FPS},split=2[base_in][fc_in];"
                 f"[base_in]{base_crop}[b];"
-                f"[fc_in]crop={fw}:{fh}:{fx}:{fy},scale={pw}:{ph},setsar=1[p];"
+                f"[fc_in]crop={fw}:{fh}:{fx}:{fy},scale={pw}:{ph}:flags=lanczos,setsar=1[p];"
                 f"[b][p]overlay={px}:{py}[v0];")
 
     if layout in ("crop", "gameplay"):
         if gm_box:
             gx, gy, gw, gh = gm_box
-            return f"[0:v]fps={config.OUT_FPS},crop={gw}:{gh}:{gx}:{gy},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1[v0];"
-        return f"[0:v]fps={config.OUT_FPS},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1[v0];"
+            return f"[0:v]fps={config.OUT_FPS},crop={gw}:{gh}:{gx}:{gy},scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},setsar=1[v0];"
+        return f"[0:v]fps={config.OUT_FPS},scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},setsar=1[v0];"
 
     return (f"[0:v]fps={config.OUT_FPS},split=2[a][b];"
             f"[a]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=6:2,"
@@ -492,8 +492,8 @@ def _render_in(work: Path, src: Path, out_dir: Path, name: str, start, end, layo
             "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-movflags", "+faststart", "-pix_fmt"]
     encoders = []
     if _qsv_ok is not False:
-        encoders.append(("qsv", ["nv12", "-c:v", "h264_qsv", "-global_quality", "23", "-preset", "fast"]))
-    encoders.append(("x264", ["yuv420p", "-c:v", "libx264", "-crf", "21", "-preset", "veryfast"]))
+        encoders.append(("qsv", ["nv12", "-c:v", "h264_qsv", "-global_quality", "19", "-preset", "medium", "-b:v", "8M"]))
+    encoders.append(("x264", ["yuv420p", "-c:v", "libx264", "-crf", "18", "-preset", "faster", "-b:v", "8M", "-maxrate", "12M", "-bufsize", "16M"]))
     err = None
     for label, enc in encoders:
         p = subprocess.run(base + enc + [f"{name}.mp4"], cwd=work, capture_output=True, text=True,

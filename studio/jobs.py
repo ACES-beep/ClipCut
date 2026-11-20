@@ -107,11 +107,11 @@ _by_user: dict = {}                       # user -> {job id: job}: listing one p
 _lock = threading.RLock()
 on_clip_ready: list = []   # callbacks (job, clip), run once when a clip first finishes
 
-DEFAULTS = {"max_clips": 6, "min_len": 15, "max_len": 60, "style": "bounce", "layout": "blur", "quality": 720,
+DEFAULTS = {"max_clips": 6, "min_len": 15, "max_len": 60, "style": "bounce", "layout": "blur", "quality": 1440,
             "range_start": None, "range_end": None, "captions": True, "template": "none"}
 
 
-LIMITS = {"max_clips": (1, 20), "min_len": (5, 120), "max_len": (10, 180), "quality": (360, 1080)}
+LIMITS = {"max_clips": (1, 20), "min_len": (5, 120), "max_len": (10, 180), "quality": (360, 4320)}
 
 
 def clean_options(options) -> dict:
@@ -747,6 +747,22 @@ def _run_job(job):
     # The ad breaks and static screens of the whole video, found once. It reads the video end to end,
     # so it is done here rather than for each clip, and only when asked for.
     statics = quality.static_ranges(job.get("source_path") or "") if config.SKIP_STATIC else []
+
+    # Fetch engagement signals: Most Replayed heatmap (70% weight), comments & live chat replay
+    smart = media.fetch_smart_signals(job.get("url") or "", span) if job.get("url") else {"was_live": False, "heatmap_peaks": [], "comment_highlights": [], "chat_spikes": []}
+    job["smart_signals"] = {
+        "is_completed_stream": smart["was_live"],
+        "heatmap_peaks": len(smart["heatmap_peaks"]),
+        "comments": len(smart["comment_highlights"]),
+        "chat_spikes": len(smart["chat_spikes"]),
+    }
+    if smart["was_live"]:
+        notes.append(f"Detected Completed Stream / VOD: Analyzed live chat replay ({len(smart['chat_spikes'])} reaction spikes found).")
+    elif smart["heatmap_peaks"]:
+        notes.append(f"Detected YouTube Video: Analyzed 'Most Replayed' graph ({len(smart['heatmap_peaks'])} retention peaks prioritized at 70%).")
+    if smart["comment_highlights"]:
+        notes.append(f"Found {len(smart['comment_highlights'])} viewer comments highlighting timestamps.")
+
     for bi, (a, b) in enumerate(blocks):
         if bi < done_blocks:
             continue                      # transcribed and checked by the AI before the restart
@@ -773,7 +789,11 @@ def _run_job(job):
         quota = max(1, math.ceil(left / (len(blocks) - bi)))
         s0 = int((a - lo) / 16000)
         found, ai = brain.find_clips(bw, db[s0: s0 + int((b - a) / 16000) + 1], (b - a) / 16000, job["title"],
-                                     job["uploader"], quota, int(o["min_len"]), int(o["max_len"]), notes.append, game=game)
+                                     job["uploader"], quota, int(o["min_len"]), int(o["max_len"]), notes.append, game=game,
+                                     heatmap_peaks=smart.get("heatmap_peaks"),
+                                     comment_highlights=smart.get("comment_highlights"),
+                                     chat_spikes=smart.get("chat_spikes"),
+                                     time_offset=shift)
         tokens += ai.get("tokens", 0)
         model = ai.get("model") or model
         if ai.get("note"):

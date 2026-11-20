@@ -111,8 +111,10 @@ def _ydl(opts):
     return yt_dlp.YoutubeDL({**base, **opts})
 
 
-def _video_format(height):
-    return f"bv*[height<={height}][vcodec^=avc1]+ba[ext=m4a]/bv*[height<={height}]+ba/b[height<={height}]/b"
+def _video_format(height=1080):
+    # Prefer highest quality video (1080p+ with high bitrate) and merge with best audio
+    h = max(1080, int(height or 1080))
+    return f"bv*[height<={h}]+ba/bv*+ba/b[height<={h}]/b"
 
 
 def _biggest(job_dir: Path, stem: str) -> Path:
@@ -127,9 +129,100 @@ def info(url: str) -> dict:
     """Title, channel and length, without downloading anything."""
     with _youtube_guard(url), _ydl({}) as ydl:
         i = ydl.extract_info(url, download=False)
+    is_live = bool(i.get("is_live"))
+    was_live = bool(i.get("was_live") or i.get("live_status") == "was_live")
+
+    # Extract all real available heights from subject video (YouTube, Twitch, Kick)
+    raw_fmts = i.get("formats") or []
+    heights = set()
+    for f in raw_fmts:
+        h = f.get("height")
+        if h and f.get("vcodec") != "none" and int(h) >= 240:
+            heights.add(int(h))
+
+    quality_map = {
+        4320: "4320p (8K Ultra)",
+        2160: "2160p (4K UHD)",
+        1440: "1440p (2K QHD)",
+        1080: "1080p (Full HD)",
+        720: "720p (HD)",
+        480: "480p",
+        360: "360p"
+    }
+    sorted_h = sorted(heights, reverse=True)
+    if not sorted_h:
+        sorted_h = [1440, 1080, 720]
+    avail_q = [{"height": h, "label": quality_map.get(h, f"{h}p")} for h in sorted_h]
+
     return {"title": i.get("title") or "", "uploader": i.get("uploader") or i.get("channel") or "",
-            "duration": float(i.get("duration") or 0), "is_live": bool(i.get("is_live")),
+            "duration": float(i.get("duration") or 0), "is_live": is_live,
+            "was_live": was_live, "is_completed_stream": was_live and not is_live,
+            "heatmap": i.get("heatmap") or [],
+            "available_qualities": avail_q,
             "thumbnail": i.get("thumbnail") or "", "kind": i.get("_type") or "video"}
+
+
+def fetch_smart_signals(url: str, duration: float) -> dict:
+    """Extracts engagement signals: Most Replayed heatmap peaks (70% weight),
+    timestamped comments, and live chat replay spikes for completed streams."""
+    if not is_youtube(url):
+        return {"heatmap_peaks": [], "comment_highlights": [], "chat_spikes": [], "was_live": False}
+    from . import heatmap
+    opts = {
+        "getcomments": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios", "web"],
+                "max_comments": ["60", "all", "10", "0"]
+            }
+        }
+    }
+    try:
+        with _youtube_guard(url), _ydl(opts) as ydl:
+            info_dict = ydl.extract_info(url, download=False) or {}
+    except Exception:
+        return {"heatmap_peaks": [], "comment_highlights": [], "chat_spikes": [], "was_live": False}
+
+    was_live = bool(info_dict.get("was_live") or info_dict.get("live_status") == "was_live")
+    raw_hm = info_dict.get("heatmap") or []
+    hm_peaks = heatmap.analyze_heatmap(raw_hm, duration)
+
+    raw_comments = info_dict.get("comments") or []
+    cm_highlights = heatmap.extract_comment_highlights(raw_comments, duration)
+
+    chat_spikes = []
+    if was_live:
+        subs = info_dict.get("subtitles") or {}
+        if "live_chat" in subs:
+            try:
+                import httpx, json
+                chat_url = (subs["live_chat"][0] or {}).get("url")
+                if chat_url:
+                    r = httpx.get(chat_url, timeout=12)
+                    if r.status_code == 200:
+                        lines = r.text.strip().splitlines()
+                        events = []
+                        for l in lines[:6000]:
+                            try:
+                                d = json.loads(l)
+                                act = d.get("replayChatItemAction", {}).get("actions", [{}])[0]
+                                item = act.get("addChatItemAction", {}).get("item", {}).get("liveChatTextMessageRenderer", {})
+                                if item:
+                                    t = float(item.get("timestampUsec", 0)) / 1e6
+                                    msg = "".join(p.get("text", "") for p in item.get("message", {}).get("runs", []))
+                                    events.append({"time_in_seconds": t, "message": msg})
+                            except Exception:
+                                continue
+                        chat_spikes = heatmap.analyze_chat_replay(events, duration)
+            except Exception:
+                pass
+
+    return {
+        "was_live": was_live,
+        "heatmap_peaks": hm_peaks,
+        "comment_highlights": cm_highlights,
+        "chat_spikes": chat_spikes
+    }
 
 
 def youtube_words(url: str):
@@ -257,7 +350,9 @@ def preview(url: str) -> dict:
         except Exception:
             thumb = ""
     out = {"title": i["title"][:200], "uploader": i["uploader"][:120], "duration": i["duration"],
-           "is_live": i["is_live"], "thumb": thumb}
+           "is_live": i["is_live"], "was_live": i.get("was_live", False),
+           "is_completed_stream": i.get("is_completed_stream", False),
+           "available_qualities": i.get("available_qualities", []), "thumb": thumb}
     if len(_PREVIEWS) > 300:
         _PREVIEWS.pop(next(iter(_PREVIEWS)))
     _PREVIEWS[url] = out

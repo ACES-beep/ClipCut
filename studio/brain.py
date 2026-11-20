@@ -270,7 +270,8 @@ def _game_rules(game):
     return GAME_RULES.format(game=_safe(games.name_of(game) or str(game), 40), tags=tags)
 
 
-def find_clips(words, db, duration, title="", uploader="", max_clips=6, min_len=15, max_len=60, log=print, game=None):
+def find_clips(words, db, duration, title="", uploader="", max_clips=6, min_len=15, max_len=60, log=print, game=None,
+               heatmap_peaks=None, comment_highlights=None, chat_spikes=None, time_offset=0.0):
     z = loud_zscore(db)
     lines = make_lines(words, z)
     if not lines:
@@ -300,6 +301,47 @@ def find_clips(words, db, duration, title="", uploader="", max_clips=6, min_len=
     if not used_model:
         found = fallback_by_loudness(db, words, max_clips, max_len, duration)
         note = "The AI was unavailable, so clips were picked by loudness only."
+
+    # Seed candidates from viewer timestamped comments in this time window
+    for cm in (comment_highlights or []):
+        t_local = cm["timestamp"] - time_offset
+        if 0 <= t_local < duration:
+            found.append({
+                "start": max(0.0, t_local - 3.0),
+                "end": min(duration, t_local + 30.0),
+                "hook": cm["title"].upper()[:45],
+                "title": cm["title"][:90],
+                "description": f"Viewer comment highlight ({cm['likes']} likes)",
+                "score": 9.5
+            })
+
+    # Seed candidates from VOD live chat reaction spikes in this time window
+    for cs in (chat_spikes or []):
+        s_local = cs["start"] - time_offset
+        e_local = cs["end"] - time_offset
+        if 0 <= s_local < duration:
+            found.append({
+                "start": max(0.0, s_local),
+                "end": min(duration, max(s_local + 20.0, e_local)),
+                "hook": "CHAT HYPE MOMENT 🔥",
+                "title": f"Live chat spike ({cs['messages']} messages)",
+                "description": f"Viewer reaction burst with z-score {cs['z_score']}",
+                "score": 9.8
+            })
+
+    # Apply 70% Most Replayed heatmap priority weighting & comment/chat score adjustments
+    from . import heatmap
+    for c in found:
+        abs_start = float(c.get("start", 0)) + time_offset
+        abs_end = float(c.get("end", abs_start + 30)) + time_offset
+        base_sc = _num(c.get("score", 7.0))
+        final_sc, reason = heatmap.calculate_priority_score(
+            base_sc, abs_start, abs_end, heatmap_peaks, comment_highlights, chat_spikes
+        )
+        c["score"] = final_sc
+        if reason:
+            c["reason"] = reason
+
     clips = []
     for c in sorted(found, key=lambda c: -_num(c.get("score"))):
         s, e = _snap(c, lines, words, min_len, max_len, duration)
