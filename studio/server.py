@@ -146,6 +146,10 @@ class Gate:
                 # changes must come from our own pages: the browser has to say so, and it has to match
                 if not _from_here(req, must_say=True):
                     return await deny(403, "Cross-site requests are not allowed.")
+        elif method not in ("GET", "HEAD", "OPTIONS") and not path.startswith(("/auth/", "/oauth/")):
+            # Changes to any endpoint must come from our own pages to protect local machines against CSRF
+            if not _from_here(req, must_say=True):
+                return await deny(403, "Cross-site requests are not allowed.")
         if not user and not is_open:
             if path == "/app" or path.startswith("/app/"):
                 return await deny(401, "", redirect="/login")
@@ -276,6 +280,10 @@ def _from_here(req, must_say=False) -> bool:
         return True
     origin = (req.headers.get("origin") or "").rstrip("/").lower()
     if not origin:
+        referer = (req.headers.get("referer") or "").rstrip("/").lower()
+        if referer:
+            ref_host = urlparse(referer).netloc
+            return ref_host == (req.headers.get("host") or "").lower() or referer.startswith(config.PUBLIC_URL.lower())
         return not must_say
     return urlparse(origin).netloc == (req.headers.get("host") or "").lower() or origin == config.PUBLIC_URL.lower()
 
@@ -286,11 +294,11 @@ def _own_address(host: str) -> bool:
     import ipaddress
     name = host.strip().lower()
     name = name[1:name.index("]")] if name.startswith("[") and "]" in name else name.rsplit(":", 1)[0] if ":" in name else name
-    if name in ("localhost", urlparse(config.PUBLIC_URL).hostname or "") or name.endswith(".localhost"):
+    if name in ("localhost", "127.0.0.1", "::1", urlparse(config.PUBLIC_URL).hostname or "") or name.endswith(".localhost"):
         return True
     try:
-        ipaddress.ip_address(name)
-        return True
+        ip = ipaddress.ip_address(name)
+        return ip.is_loopback or (not config.HOST.startswith("127.") and ip.is_private)
     except ValueError:
         return False
 
