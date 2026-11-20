@@ -1510,6 +1510,15 @@ function drawAdd(variant) {
         {v:"breaking_news", label:"Breaking News", prev:'<span style="font-size:13px">🚨</span> '},
         {v:"tiktok_hook", label:"TikTok Banner", prev:'<span style="font-size:13px">💬</span> '}
       ], c?.template ?? "none")}</div>
+      <div class="ob wide"><div class="ot" style="display:flex;justify-content:space-between;align-items:center">
+        <span>🪝 Hook & Narrative Arc Structure</span>
+        <span style="font-size:10.5px;color:#FF9900;font-weight:600">Hook 🪝 → Story 📕 → Payoff 🥳</span>
+      </div>${choice("o_hook_structure", [
+        {v:"hook_story_payoff", label:"Hook 🪝 → Story 📕 → Payoff 🥳 (Universal 3-Act)", prev:'<span style="font-size:14px">🪝</span> '},
+        {v:"question_loop", label:"Curiosity Question Loop (Unanswered Hook)", prev:'<span style="font-size:14px">❓</span> '},
+        {v:"action_climax", label:"Action Escalation & Instant Payoff", prev:'<span style="font-size:14px">⚡</span> '},
+        {v:"quote", label:"Spoken Punchline Quote", prev:'<span style="font-size:14px">💬</span> '}
+      ], c?.hook_structure ?? "hook_story_payoff")}</div>
 
       <!-- Gaming Dual-Layer & Timeline Editor Trigger -->
       <div class="ob wide" id="opt_gaming_toggle_box" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:var(--card,#1a1e24);border:1px solid #30363d;border-radius:10px;padding:14px;margin-top:6px">
@@ -1624,7 +1633,7 @@ document.addEventListener("keydown", e => {
 const targetCreator = () => creatorId() || $("#o_creator")?.value || "";
 function jobOptions() {
   const n = id => { const v = $(id).value; return v === "" ? null : Number(v); };
-  const o = {max_clips:n("#o_max"), min_len:n("#o_min"), max_len:n("#o_maxlen"), captions:$("#o_captions").checked, style:$("#o_style").value, template:$("#o_template") ? $("#o_template").value : "none", layout:$("#o_layout").value, quality:n("#o_quality")};
+  const o = {max_clips:n("#o_max"), min_len:n("#o_min"), max_len:n("#o_maxlen"), captions:$("#o_captions").checked, style:$("#o_style").value, template:$("#o_template") ? $("#o_template").value : "none", hook_structure:$("#o_hook_structure") ? $("#o_hook_structure").value : "hook_story_payoff", layout:$("#o_layout").value, quality:n("#o_quality")};
   if (n("#o_from") !== null) o.range_start = n("#o_from") * 60;
   if (n("#o_to") !== null) o.range_end = n("#o_to") * 60;
   if (o.layout === "gameplay" || o.layout === "split") {
@@ -1961,7 +1970,10 @@ function clipHtml(j, c) {
     <button class="shot" data-act="openclip" ${a} aria-label="Open clip: ${esc(c.title || c.hook)}">${body}
       <span class="badge l ${scoreCls(c.score)}" title="AI score">${c.score || "Hand"}</span><span class="badge r">${fmt(c.end - c.start)}</span></button>
     <div class="clip-body">
-      <div class="hook">${esc(c.hook || "Untitled clip")}</div>
+      <div class="hook" style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+        <span>${esc(c.hook || "Untitled clip")}</span>
+        <span style="font-size:9.5px;background:rgba(255,153,0,0.15);color:#FF9900;border:1px solid rgba(255,153,0,0.3);padding:1px 5px;border-radius:4px;font-weight:700;white-space:nowrap">🪝 3-Act</span>
+      </div>
       <div class="ttl">${esc(c.title)}</div>
       ${postPills(c) ? `<div class="row" style="gap:4px">${postPills(c)}</div>` : ""}
       <div class="clip-foot">
@@ -3452,7 +3464,26 @@ function drawClipDlg(full) {
             </button>
           ` : `
             <h3>On the video</h3>
-            <label class="f">Big text (Title Hook)<input data-f="hook" id="input_hook_text" value="${esc(c.hook)}"></label>
+            <div style="background:rgba(255,153,0,0.06);border:1px solid rgba(255,153,0,0.25);border-radius:8px;padding:12px;margin:8px 0 12px 0">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <span style="font-weight:700;font-size:12.5px;color:#FF9900;display:flex;align-items:center;gap:6px">
+                  🪝 3-Act Short-Form Narrative
+                </span>
+                <span style="font-size:10px;color:var(--dim,#8b949e)">Curiosity Gap → Forward Motion → Payoff</span>
+              </div>
+              <label class="f" style="margin-bottom:8px">
+                <span style="font-size:11.5px;font-weight:600;color:var(--text,#f0f6fc)">🪝 Hook (0-3s Curiosity Question - ALL CAPS)</span>
+                <input data-f="hook" id="input_hook_text" value="${esc(c.hook || '')}" placeholder="e.g. WILL HE SURVIVE THIS?">
+              </label>
+              <label class="f" style="margin-bottom:8px">
+                <span style="font-size:11.5px;font-weight:600;color:var(--text,#f0f6fc)">📕 Story (Middle 80% Forward Motion)</span>
+                <textarea data-f="story" rows="2" placeholder="Tension building, struggle, or escalation...">${esc(c.story || '')}</textarea>
+              </label>
+              <label class="f" style="margin-bottom:2px">
+                <span style="font-size:11.5px;font-weight:600;color:var(--text,#f0f6fc)">🥳 Payoff (Final 3-5s Resolution / Closed Loop)</span>
+                <textarea data-f="payoff" rows="2" placeholder="The clutch win, fail, punchline, or answer...">${esc(c.payoff || '')}</textarea>
+              </label>
+            </div>
             <label class="f">Viral Template (Yizerge Style)
               <select data-f="template" id="clip_template_sel">
                 <option value="none" ${c.template === 'none' || !c.template ? 'selected' : ''}>✦ Standard Title Badge</option>

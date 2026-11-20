@@ -108,7 +108,8 @@ _lock = threading.RLock()
 on_clip_ready: list = []   # callbacks (job, clip), run once when a clip first finishes
 
 DEFAULTS = {"max_clips": 6, "min_len": 15, "max_len": 60, "style": "bounce", "layout": "blur", "quality": 1440,
-            "range_start": None, "range_end": None, "captions": True, "template": "none"}
+            "range_start": None, "range_end": None, "captions": True, "template": "none",
+            "hook_structure": "hook_story_payoff"}
 
 
 LIMITS = {"max_clips": (1, 20), "min_len": (5, 120), "max_len": (10, 180), "quality": (360, 4320)}
@@ -136,6 +137,8 @@ def clean_options(options) -> dict:
             v = v if v in render.STYLES else DEFAULTS["style"]
         elif k == "template":
             v = v if v in ("none", "twitter", "breaking_news", "tiktok_hook") else "none"
+        elif k == "hook_structure":
+            v = v if v in ("hook_story_payoff", "question_loop", "action_climax", "quote") else "hook_story_payoff"
         elif k == "layout":
             v = v if v in render.LAYOUTS else DEFAULTS["layout"]
         else:                                    # range_start, range_end: seconds into the video
@@ -388,9 +391,9 @@ def request_render(jid, cid, changes: dict):
         raise ValueError("Those times aren't valid.")
     if not 3 <= new["end"] - new["start"] <= 180:
         raise ValueError("A clip can be 3 to 180 seconds long.")
-    for k in ("hook", "title", "description", "style", "layout", "template"):
+    for k in ("hook", "title", "description", "style", "layout", "template", "story", "payoff"):
         if k in changes:
-            new[k] = str(changes[k])[:{"hook": 60, "title": 100, "description": 2000}.get(k, 20)]
+            new[k] = str(changes[k])[:{"hook": 80, "title": 100, "description": 2000, "story": 500, "payoff": 500}.get(k, 30)]
     for k in ("facecam", "game_area", "facecam_pos"):
         if k in changes:
             v = changes[k]
@@ -797,7 +800,8 @@ def _run_job(job):
                                      heatmap_peaks=smart.get("heatmap_peaks"),
                                      comment_highlights=smart.get("comment_highlights"),
                                      chat_spikes=smart.get("chat_spikes"),
-                                     time_offset=shift)
+                                     time_offset=shift,
+                                     hook_structure=o.get("hook_structure", "hook_story_payoff"))
         tokens += ai.get("tokens", 0)
         model = ai.get("model") or model
         if ai.get("note"):
@@ -818,6 +822,9 @@ def _run_job(job):
             c.update(id=f"clip{len(job['clips']) + 1:02d}", start=round(c["start"] + shift, 2),
                      end=round(c["end"] + shift, 2), style=o["style"], layout=o["layout"],
                      template=o.get("template", "none"),
+                     hook_structure=o.get("hook_structure", "hook_story_payoff"),
+                     story=c.get("story", ""),
+                     payoff=c.get("payoff", ""),
                      captions=o.get("captions", True), status="queued", version=0)
             if o.get("facecam"):
                 c["facecam"] = o["facecam"]
