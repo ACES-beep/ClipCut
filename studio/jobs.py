@@ -108,7 +108,7 @@ _lock = threading.RLock()
 on_clip_ready: list = []   # callbacks (job, clip), run once when a clip first finishes
 
 DEFAULTS = {"max_clips": 6, "min_len": 15, "max_len": 60, "style": "bounce", "layout": "blur", "quality": 720,
-            "range_start": None, "range_end": None, "captions": True}
+            "range_start": None, "range_end": None, "captions": True, "template": "none"}
 
 
 LIMITS = {"max_clips": (1, 20), "min_len": (5, 120), "max_len": (10, 180), "quality": (360, 1080)}
@@ -134,6 +134,8 @@ def clean_options(options) -> dict:
             v = max(lo, min(hi, int(float(v))))
         elif k == "style":
             v = v if v in render.STYLES else DEFAULTS["style"]
+        elif k == "template":
+            v = v if v in ("none", "twitter", "breaking_news", "tiktok_hook") else "none"
         elif k == "layout":
             v = v if v in render.LAYOUTS else DEFAULTS["layout"]
         else:                                    # range_start, range_end: seconds into the video
@@ -316,7 +318,7 @@ def create(source: dict, options: dict, enqueue=True, creator=None, kind="video"
     c = creators.get(creator) if creator else None
     if c:
         d = creators.root(c["id"]) / ("live" if kind == "live" else "videos") / jid
-        base = {**DEFAULTS, **{k: c[k] for k in ("max_clips", "min_len", "max_len", "style", "layout", "captions")}}
+        base = {**DEFAULTS, **{k: c[k] for k in ("max_clips", "min_len", "max_len", "style", "layout", "template", "captions") if k in c}}
     else:
         d, base, creator = config.user_dir(ctx.uid()) / "jobs" / jid, dict(DEFAULTS), None
     opts = {**base, **clean_options(options)}
@@ -386,7 +388,7 @@ def request_render(jid, cid, changes: dict):
         raise ValueError("Those times aren't valid.")
     if not 3 <= new["end"] - new["start"] <= 180:
         raise ValueError("A clip can be 3 to 180 seconds long.")
-    for k in ("hook", "title", "description", "style", "layout"):
+    for k in ("hook", "title", "description", "style", "layout", "template"):
         if k in changes:
             new[k] = str(changes[k])[:{"hook": 60, "title": 100, "description": 2000}.get(k, 20)]
     for k in ("facecam", "game_area", "facecam_pos"):
@@ -791,6 +793,7 @@ def _run_job(job):
         for c in found:
             c.update(id=f"clip{len(job['clips']) + 1:02d}", start=round(c["start"] + shift, 2),
                      end=round(c["end"] + shift, 2), style=o["style"], layout=o["layout"],
+                     template=o.get("template", "none"),
                      captions=o.get("captions", True), status="queued", version=0)
             if o.get("facecam"):
                 c["facecam"] = o["facecam"]

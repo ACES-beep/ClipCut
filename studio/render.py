@@ -12,11 +12,17 @@ W, H = config.OUT_W, config.OUT_H
 
 # ASS colours are &HBBGGRR. `size` is the ASS font size (line height); _Font turns it into real pixels.
 STYLES = {
-    "bounce": {"label": "Bounce", "font": "Poppins ExtraBold", "size": 132, "base": "FFFFFF", "active": "00F0FF",
-               "strong": "FFFFFF", "outline": 7, "pop": 112, "upper": True, "per": 3},
-    "hype": {"label": "Hype", "font": "Anton", "size": 152, "base": "FFFFFF", "active": "3C3CFF",
+    "bounce": {"label": "Pop-In Bounce", "font": "Poppins ExtraBold", "size": 132, "base": "FFFFFF", "active": "00F0FF",
+               "strong": "FFFFFF", "outline": 7, "pop": 115, "upper": True, "per": 3},
+    "highlight": {"label": "Neon Highlight", "font": "Poppins ExtraBold", "size": 128, "base": "CCCCCC", "active": "00FFFF",
+                  "strong": "00FF66", "outline": 8, "pop": 108, "upper": True, "per": 3},
+    "onebyone": {"label": "One-By-One (Fast Speed)", "font": "Poppins ExtraBold", "size": 142, "base": "FFFFFF", "active": "00F0FF",
+                 "strong": "FFCC00", "outline": 8, "pop": 118, "upper": True, "per": 1},
+    "boxed": {"label": "Boxed Pop-In", "font": "Poppins ExtraBold", "size": 120, "base": "FFFFFF", "active": "00F0FF",
+              "strong": "FFFFFF", "outline": 6, "pop": 110, "upper": True, "per": 3, "box": True},
+    "hype": {"label": "Hype (Bold Punch)", "font": "Anton", "size": 152, "base": "FFFFFF", "active": "3C3CFF",
              "strong": "00D7FF", "outline": 7, "pop": 114, "upper": True, "per": 2},
-    "clean": {"label": "Clean", "font": "Poppins ExtraBold", "size": 100, "base": "FFFFFF", "active": "6BD7FF",
+    "clean": {"label": "Clean (Subtle)", "font": "Poppins ExtraBold", "size": 100, "base": "FFFFFF", "active": "6BD7FF",
               "strong": "FFFFFF", "outline": 5, "pop": 106, "upper": False, "per": 4},
 }
 HOOK = {"font": "Poppins ExtraBold", "size": 96, "ink": "14100E", "box": "FFFFFF", "pad_x": 36, "pad_y": 22, "radius": 26,
@@ -130,12 +136,74 @@ def geometry(src_w, src_h, layout):
     return layout, fg_h, max(230, top - 190), min(1640, top + fg_h + 180)
 
 
-def _hook_events(hook, dur, y):
-    """The heading: dark text in a white rounded box that fits it, on one line or two balanced ones."""
-    f, size = _Font.get(HOOK["font"]), HOOK["size"]
+def _hook_events(hook, dur, y, template="none"):
+    """The heading / viral template card: X post card, breaking news chyron, tiktok hook, or clean box."""
     words = hook.split()
     if not words:
         return []
+    span = f"{_ts(0)},{_ts(dur)}"
+    n = lambda v: f"{v:.0f}"
+
+    if template == "twitter":
+        # 𝕏 / Twitter Post Card (Clean white card with avatar, handle, verified badge, and tweet text)
+        bw, bh = 940, 240
+        x0, y0, r = (W - bw) / 2, y - bh / 2, 24
+        x1, y1 = x0 + bw, y0 + bh
+        box = (f"m {n(x0 + r)} {n(y0)} l {n(x1 - r)} {n(y0)} b {n(x1)} {n(y0)} {n(x1)} {n(y0)} {n(x1)} {n(y0 + r)} "
+               f"l {n(x1)} {n(y1 - r)} b {n(x1)} {n(y1)} {n(x1)} {n(y1)} {n(x1 - r)} {n(y1)} "
+               f"l {n(x0 + r)} {n(y1)} b {n(x0)} {n(y1)} {n(x0)} {n(y1)} {n(x0)} {n(y1 - r)} "
+               f"l {n(x0)} {n(y0 + r)} b {n(x0)} {n(y0)} {n(x0)} {n(y0)} {n(x0 + r)} {n(y0)}")
+        ev = [
+            f"Dialogue: 3,{span},Hook,,0,0,0,,{{\\an7\\pos(0,0)\\fad(140,0)\\c&HFFFFFF&\\p1}}{box}{{\\p0}}",
+            # Avatar circle
+            f"Dialogue: 4,{span},Hook,,0,0,0,,{{\\an5\\pos({n(x0 + 64)},{n(y0 + 56)})\\c&HF09B1D&\\fs48}}●",
+            f"Dialogue: 5,{span},Hook,,0,0,0,,{{\\an5\\pos({n(x0 + 64)},{n(y0 + 56)})\\c&HFFFFFF&\\fs26\\b1}}𝕏",
+            # Name, verified badge, and handle
+            f"Dialogue: 4,{span},Hook,,0,0,0,,{{\\an4\\pos({n(x0 + 104)},{n(y0 + 44)})\\c&H14100E&\\fs38\\b1}}ClipCut {{\\c&HF09B1D&}}✓",
+            f"Dialogue: 4,{span},Hook,,0,0,0,,{{\\an4\\pos({n(x0 + 104)},{n(y0 + 74)})\\c&H716453&\\fs26}}@viral_moments",
+        ]
+        # Tweet body text
+        f = _Font.get("Poppins ExtraBold")
+        lines = [" ".join(words)]
+        size = 46
+        if f.width(lines[0], size) > (bw - 100) and len(words) > 1:
+            cut = min(range(1, len(words)), key=lambda i: max(f.width(" ".join(words[:i]), size), f.width(" ".join(words[i:]), size)))
+            lines = [" ".join(words[:cut]), " ".join(words[cut:])]
+        for i, line in enumerate(lines):
+            line_y = y0 + 124 + i * 50
+            ev.append(f"Dialogue: 4,{span},Hook,,0,0,0,,{{\\an4\\pos({n(x0 + 48)},{n(line_y)})\\c&H0F1419&\\fs{size}\\b1}}{line}")
+        return ev
+
+    if template == "breaking_news":
+        # 🚨 Breaking News Lower-Third Chyron
+        bar_y = max(y, 1420)
+        ev = [
+            # Red headline banner
+            f"Dialogue: 3,{span},Hook,,0,0,0,,{{\\an7\\pos(0,{n(bar_y - 68)})\\fad(120,0)\\c&H1E1AE6&\\p1}}m 0 0 l {W} 0 l {W} 68 l 0 68{{\\p0}}",
+            f"Dialogue: 4,{span},Hook,,0,0,0,,{{\\an4\\pos(48,{n(bar_y - 34)})\\c&HFFFFFF&\\fs42\\b1}}🚨 BREAKING NEWS",
+            # Dark ticker bar
+            f"Dialogue: 3,{span},Hook,,0,0,0,,{{\\an7\\pos(0,{n(bar_y)})\\fad(120,0)\\c&H0A0A0A&\\p1}}m 0 0 l {W} 0 l {W} 88 l 0 88{{\\p0}}",
+            f"Dialogue: 4,{span},Hook,,0,0,0,,{{\\an4\\pos(48,{n(bar_y + 44)})\\c&H00F0FF&\\fs48\\b1}}{hook}",
+        ]
+        return ev
+
+    if template == "tiktok_hook":
+        # 💬 TikTok Retention Banner
+        bw, bh = 920, 110
+        x0, y0, r = (W - bw) / 2, y - bh / 2, 26
+        x1, y1 = x0 + bw, y0 + bh
+        box = (f"m {n(x0 + r)} {n(y0)} l {n(x1 - r)} {n(y0)} b {n(x1)} {n(y0)} {n(x1)} {n(y0)} {n(x1)} {n(y0 + r)} "
+               f"l {n(x1)} {n(y1 - r)} b {n(x1)} {n(y1)} {n(x1)} {n(y1)} {n(x1 - r)} {n(y1)} "
+               f"l {n(x0 + r)} {n(y1)} b {n(x0)} {n(y1)} {n(x0)} {n(y1)} {n(x0)} {n(y1 - r)} "
+               f"l {n(x0)} {n(y0 + r)} b {n(x0)} {n(y0)} {n(x0)} {n(y0)} {n(x0 + r)} {n(y0)}")
+        ev = [
+            f"Dialogue: 3,{span},Hook,,0,0,0,,{{\\an7\\pos(0,0)\\fad(140,0)\\c&H0D1117&\\bord4\\3c&H00F0FF&\\p1}}{box}{{\\p0}}",
+            f"Dialogue: 4,{span},Hook,,0,0,0,,{{\\an5\\pos({W // 2},{n(y)})\\fad(140,0)\\c&HFFFFFF&\\fs52\\b1}}🔥 {hook}",
+        ]
+        return ev
+
+    # Standard clean Hook
+    f, size = _Font.get(HOOK["font"]), HOOK["size"]
     lines = [" ".join(words)]
     if f.width(lines[0], size) > HOOK["max_w"] and len(words) > 1:      # two lines, split where they come out most even
         cut = min(range(1, len(words)), key=lambda i: max(f.width(" ".join(words[:i]), size), f.width(" ".join(words[i:]), size)))
@@ -148,7 +216,6 @@ def _hook_events(hook, dur, y):
     bw, bh = widest + 2 * HOOK["pad_x"], line_h * len(lines) + 2 * HOOK["pad_y"]
     x0, y0, r = (W - bw) / 2, y - bh / 2, min(HOOK["radius"], bh / 2)
     x1, y1 = x0 + bw, y0 + bh
-    n = lambda v: f"{v:.0f}"                                                         # noqa: E731
     box = (f"m {n(x0 + r)} {n(y0)} l {n(x1 - r)} {n(y0)} b {n(x1)} {n(y0)} {n(x1)} {n(y0)} {n(x1)} {n(y0 + r)} "
            f"l {n(x1)} {n(y1 - r)} b {n(x1)} {n(y1)} {n(x1)} {n(y1)} {n(x1 - r)} {n(y1)} "
            f"l {n(x0 + r)} {n(y1)} b {n(x0)} {n(y1)} {n(x0)} {n(y1)} {n(x0)} {n(y1 - r)} "
@@ -161,7 +228,7 @@ def _hook_events(hook, dur, y):
     return ev
 
 
-def build_ass(words, start, end, hook, style_name, highlight, hook_y, cap_y) -> str:
+def build_ass(words, start, end, hook, style_name, highlight, hook_y, cap_y, template="none") -> str:
     st = STYLES.get(style_name, STYLES["bounce"])
     words = [dict(w, s=w["s"] - CAPTION_LEAD, e=w["e"] - CAPTION_LEAD) for w in words]
     strong = {_key(h) for h in highlight if _key(h)}
@@ -181,7 +248,7 @@ Style: Hook,{HOOK['font']},{HOOK['size']},&H00{HOOK['ink']},&H00{HOOK['ink']},&H
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     dur = end - start
-    ev = _hook_events(_clean(hook), dur, hook_y)
+    ev = _hook_events(_clean(hook), dur, hook_y, template=template)
     f = _Font.get(st["font"])
     inside = [dict(w, w=_clean(w["w"])) for w in words if w["s"] >= start - 0.05 and w["s"] < end]
     inside = sorted((w for w in inside if w["w"]), key=lambda w: w["s"])
@@ -218,10 +285,22 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             wd = f.width(t, size)
             p = max(104, min(st["pop"], 100 + int(2200 / max(wd, 1))))   # long words grow less, so they never touch their neighbours
             pos = f"\\an5\\pos({x + wd / 2:.0f},{cy:.0f})\\fs{size}"
-            x += wd + gap
             a = max(g_start, w["s"] - start)
             b = (g[i + 1]["s"] - start) if i + 1 < len(g) else g_end
             base = st["strong"] if _key(w["w"]) in strong else st["base"]
+
+            if st.get("box") and b - a >= 0.02:
+                n = lambda v: f"{v:.0f}"
+                bx0, by0 = x - 14, cy - size * 0.55
+                bx1, by1 = x + wd + 14, cy + size * 0.55
+                br = 12
+                box_shape = (f"m {n(bx0 + br)} {n(by0)} l {n(bx1 - br)} {n(by0)} b {n(bx1)} {n(by0)} {n(bx1)} {n(by0)} {n(bx1)} {n(by0 + br)} "
+                             f"l {n(bx1)} {n(by1 - br)} b {n(bx1)} {n(by1)} {n(bx1)} {n(by1)} {n(bx1 - br)} {n(by1)} "
+                             f"l {n(bx0 + br)} {n(by1)} b {n(bx0)} {n(by1)} {n(bx0)} {n(by1)} {n(bx0)} {n(by1 - br)} "
+                             f"l {n(bx0)} {n(by0 + br)} b {n(bx0)} {n(by0)} {n(bx0)} {n(by0)} {n(bx0 + br)} {n(by0)}")
+                ev.append(f"Dialogue: 1,{_ts(a)},{_ts(b)},Cap,,0,0,0,,{{\\an7\\pos(0,0)\\c&H0A0D14&\\bord2\\3c&H00F0FF&\\p1}}{box_shape}{{\\p0}}")
+
+            x += wd + gap
             if a - g_start >= 0.02:                                                   # waiting to be said
                 ev.append(f"Dialogue: 1,{_ts(g_start)},{_ts(a)},Cap,,0,0,0,,{{{pos}\\c&H{base}&}}{t}")
             if b - a >= 0.02:                                                         # being said: colour and a quick pop, in front
@@ -367,7 +446,7 @@ def render_clip(src: Path, out_dir: Path, name: str, clip: dict, words: list, sr
         layout = "crop"     # no webcam found: the game fills the screen
     hook_y = _hook_y(layout, hook_y, face, facecam_pos)
     ass = build_ass(words if clip.get("captions", True) else [], start, end, clip.get("hook", ""), clip.get("style", "bounce"),
-                    clip.get("highlight_words", []), hook_y, cap_y)
+                    clip.get("highlight_words", []), hook_y, cap_y, template=clip.get("template", "none"))
     work = Path(tempfile.mkdtemp(prefix="pk"))
     try:
         return _render_in(work, src, out_dir, name, start, end, layout, fg_h, ass,
