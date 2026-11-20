@@ -242,20 +242,80 @@ def _snap(clip, lines, words, min_len, max_len, duration):
     return round(max(0.0, s - 0.15), 2), round(min(duration, e + tail), 2)
 
 
-def fallback_by_loudness(db, words, n, max_len, duration):
-    """No AI available: take the loudest stretches that contain speech."""
+def fallback_by_loudness(db, words, n, max_len, duration, video_title=""):
+    """Smart contextual highlight generator when AI is unavailable or rate-limited.
+    Extracts real spoken dialogue, punches up a relevant hook from what was said,
+    and builds a descriptive context title."""
     z = loud_zscore(db)
     picks, order = [], np.argsort(-z)
+    clean_vtitle = re.sub(r'[\-_|].*$', '', video_title or '').strip() or "Highlight"
+
     for sec in order:
-        s = max(0.0, float(sec) - max_len * 0.6)
+        s = max(0.0, float(sec) - max_len * 0.5)
         e = min(duration, s + max_len)
         if any(not (e <= p["start"] or s >= p["end"]) for p in picks):
             continue
-        if not any(s <= w["s"] <= e for w in words):
+        clip_words = [w for w in words if s <= w["s"] <= e]
+        if not clip_words or len(clip_words) < 4:
             continue
-        picks.append({"start": s, "end": e, "score": 50, "category": "other", "hook": "WAIT FOR IT",
-                      "title": "Loud moment", "description": "", "hashtags": [], "highlight_words": [],
-                      "reason": "Picked by loudness because the AI was unavailable."})
+
+        # Extract sentences from spoken words
+        text = " ".join(w["w"] for w in clip_words).strip()
+        sentences = re.split(r'(?<=[.?!])\s+', text)
+        sentences = [s_txt.strip() for s_txt in sentences if s_txt.strip()]
+        if not sentences:
+            sentences = [text]
+
+        # Find best spoken hook quote (prefer sentences with 3-9 words)
+        best_quote = ""
+        for st in sentences:
+            w_count = len(st.split())
+            if 3 <= w_count <= 9:
+                best_quote = st
+                break
+        if not best_quote:
+            best_quote = " ".join(w["w"] for w in clip_words[:min(6, len(clip_words))])
+
+        clean_hook = re.sub(r'[^\w\s\']', '', best_quote).upper()[:36].strip()
+        if not clean_hook:
+            clean_hook = "VIRAL MOMENT 🔥"
+
+        # Build contextual title
+        quote_title = best_quote.strip(".?! ")
+        if len(quote_title) > 35:
+            quote_title = quote_title[:32] + "..."
+        if clean_vtitle and clean_vtitle.lower() not in quote_title.lower():
+            title_text = f"{clean_vtitle}: {quote_title}"
+        else:
+            title_text = quote_title.capitalize()
+        title_text = title_text[:70]
+
+        # Extract highlight words for animated captions
+        hl_words = [w["w"] for w in clip_words if len(w["w"]) > 3][:3]
+
+        # Determine category based on spoken keywords
+        low_text = text.lower()
+        if any(k in low_text for k in ("die", "creeper", "kill", "fail", "lost", "broke", "dead", "rip")):
+            cat = "fail"
+        elif any(k in low_text for k in ("win", "clutch", "epic", "huge", "got it", "finally")):
+            cat = "win"
+        elif any(k in low_text for k in ("haha", "lol", "joke", "funny", "lmao", "what the")):
+            cat = "funny"
+        else:
+            cat = "action"
+
+        picks.append({
+            "start": s,
+            "end": e,
+            "score": 75,
+            "category": cat,
+            "hook": clean_hook,
+            "title": title_text,
+            "description": f"Highlight: \"{text[:120]}...\"",
+            "hashtags": [f"#{cat}", "#viral", "#gaming", "#shorts"],
+            "highlight_words": hl_words,
+            "reason": f"High engagement spoken dialogue: \"{best_quote[:40]}\""
+        })
         if len(picks) >= n:
             break
     return picks
@@ -299,8 +359,8 @@ def find_clips(words, db, duration, title="", uploader="", max_clips=6, min_len=
             log(f"AI window {a:.0f}-{b:.0f}s failed: {e}")
     note = ""
     if not used_model:
-        found = fallback_by_loudness(db, words, max_clips, max_len, duration)
-        note = "The AI was unavailable, so clips were picked by loudness only."
+        found = fallback_by_loudness(db, words, max_clips, max_len, duration, video_title=title)
+        note = "The AI was unavailable, so clips were picked using smart dialogue and loudness."
 
     # Seed candidates from viewer timestamped comments in this time window
     for cm in (comment_highlights or []):
