@@ -230,6 +230,164 @@ def _hook_events(hook, dur, y, template="none"):
     return ev
 
 
+def _generate_title_card_image(hook_text: str, template: str, hook_y: int, work_dir: Path) -> str:
+    """Renders the title banner / template card as a high-resolution 32-bit RGBA PNG overlay with full color emojis."""
+    from PIL import Image, ImageDraw, ImageFont
+    import unicodedata
+
+    if not hook_text or not hook_text.strip():
+        return None
+
+    words = hook_text.strip().split()
+    if not words:
+        return None
+
+    def is_emoji_char(ch):
+        cat = unicodedata.category(ch)
+        code = ord(ch)
+        if cat in ('So', 'Sk'):
+            return True
+        if 0x1F300 <= code <= 0x1FAFF or 0x2600 <= code <= 0x27BF or 0xFE00 <= code <= 0xFE0F:
+            return True
+        return False
+
+    def split_text_emojis(text):
+        runs = []
+        curr = ''
+        curr_is_em = None
+        for ch in text:
+            em = is_emoji_char(ch)
+            if curr_is_em is None:
+                curr_is_em = em
+                curr += ch
+            elif em == curr_is_em:
+                curr += ch
+            else:
+                runs.append((curr, curr_is_em))
+                curr = ch
+                curr_is_em = em
+        if curr:
+            runs.append((curr, curr_is_em))
+        return runs
+
+    def get_emoji_font(size):
+        for name in ('seguiemj.ttf', 'Apple Color Emoji.ttf', 'NotoColorEmoji.ttf'):
+            try:
+                return ImageFont.truetype(name, size)
+            except Exception:
+                pass
+        return ImageFont.load_default()
+
+    def draw_runs(d, runs, start_x, y, f_txt, f_em, color):
+        x = start_x
+        for chunk, is_em in runs:
+            font = f_em if is_em else f_txt
+            if is_em:
+                d.text((x, y), chunk, font=font, embedded_color=True)
+            else:
+                d.text((x, y), chunk, font=font, fill=color)
+            x += font.getlength(chunk)
+        return x - start_x
+
+    def runs_width(runs, f_txt, f_em):
+        return sum(f_em.getlength(r[0]) if r[1] else f_txt.getlength(r[0]) for r in runs)
+
+    im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+
+    if template == "twitter":
+        bw, bh = 940, 240
+        x0, y0 = (W - bw) // 2, int(hook_y - bh // 2)
+        x1, y1 = x0 + bw, y0 + bh
+        d.rounded_rectangle((x0, y0, x1, y1), radius=24, fill=(255, 255, 255, 255))
+        av_cx, av_cy, av_r = x0 + 64, y0 + 56, 26
+        d.ellipse((av_cx - av_r, av_cy - av_r, av_cx + av_r, av_cy + av_r), fill=(240, 155, 29, 255))
+        f_av = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 26)
+        d.text((av_cx - 8, av_cy - 16), "𝕏", font=f_av, fill=(255, 255, 255, 255))
+        f_hdr = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 30)
+        f_sub = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 22)
+        d.text((x0 + 104, y0 + 34), "ClipCut ✓", font=f_hdr, fill=(20, 16, 14, 255))
+        d.text((x0 + 104, y0 + 68), "@viral_moments", font=f_sub, fill=(113, 100, 83, 255))
+        f_txt = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 38)
+        f_em = get_emoji_font(38)
+        lines = [" ".join(words)]
+        if runs_width(split_text_emojis(lines[0]), f_txt, f_em) > (bw - 100) and len(words) > 1:
+            cut = min(range(1, len(words)), key=lambda i: max(
+                runs_width(split_text_emojis(" ".join(words[:i])), f_txt, f_em),
+                runs_width(split_text_emojis(" ".join(words[i:])), f_txt, f_em)
+            ))
+            lines = [" ".join(words[:cut]), " ".join(words[cut:])]
+        for i, line in enumerate(lines):
+            line_y = y0 + 116 + i * 48
+            runs = split_text_emojis(line)
+            draw_runs(d, runs, x0 + 48, line_y, f_txt, f_em, (15, 20, 25, 255))
+
+    elif template == "breaking_news":
+        bar_y = max(int(hook_y), 1420)
+        d.rectangle((0, bar_y - 68, W, bar_y), fill=(230, 26, 30, 255))
+        f_bn = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 38)
+        f_bn_em = get_emoji_font(38)
+        draw_runs(d, split_text_emojis("🚨 BREAKING NEWS"), 48, bar_y - 56, f_bn, f_bn_em, (255, 255, 255, 255))
+        d.rectangle((0, bar_y, W, bar_y + 88), fill=(10, 10, 10, 255))
+        f_txt = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 44)
+        f_em = get_emoji_font(44)
+        draw_runs(d, split_text_emojis(hook_text), 48, bar_y + 20, f_txt, f_em, (0, 240, 255, 255))
+
+    elif template == "tiktok_hook":
+        f_txt = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 44)
+        f_em = get_emoji_font(44)
+        lines = [" ".join(words)]
+        if runs_width(split_text_emojis(lines[0]), f_txt, f_em) > 860 and len(words) > 1:
+            cut = min(range(1, len(words)), key=lambda i: max(
+                runs_width(split_text_emojis(" ".join(words[:i])), f_txt, f_em),
+                runs_width(split_text_emojis(" ".join(words[i:])), f_txt, f_em)
+            ))
+            lines = [" ".join(words[:cut]), " ".join(words[cut:])]
+        bw = 920
+        bh = 60 + len(lines) * 54
+        x0, y0 = (W - bw) // 2, int(hook_y - bh // 2)
+        x1, y1 = x0 + bw, y0 + bh
+        d.rounded_rectangle((x0, y0, x1, y1), radius=26, fill=(13, 17, 23, 255), outline=(0, 240, 255, 255), width=4)
+        for i, line in enumerate(lines):
+            runs = split_text_emojis(line)
+            lw = runs_width(runs, f_txt, f_em)
+            lx = x0 + (bw - lw) // 2
+            ly = y0 + 26 + i * 54
+            draw_runs(d, runs, lx, ly, f_txt, f_em, (255, 255, 255, 255))
+
+    else:
+        # Standard Minimal Clean Box
+        f_txt = ImageFont.truetype('studio/fonts/Poppins-ExtraBold.ttf', 46)
+        f_em = get_emoji_font(46)
+        lines = [" ".join(words)]
+        if runs_width(split_text_emojis(lines[0]), f_txt, f_em) > 840 and len(words) > 1:
+            cut = min(range(1, len(words)), key=lambda i: max(
+                runs_width(split_text_emojis(" ".join(words[:i])), f_txt, f_em),
+                runs_width(split_text_emojis(" ".join(words[i:])), f_txt, f_em)
+            ))
+            lines = [" ".join(words[:cut]), " ".join(words[cut:])]
+        line_runs = [split_text_emojis(l) for l in lines]
+        line_widths = [runs_width(r, f_txt, f_em) for r in line_runs]
+        max_lw = max(line_widths)
+        pad_x, pad_y = 38, 22
+        bw = max(260, min(1000, int(max_lw + pad_x * 2)))
+        line_h = 56
+        bh = int(len(lines) * line_h + pad_y * 2 - 8)
+        x0, y0 = (W - bw) // 2, int(hook_y - bh // 2)
+        x1, y1 = x0 + bw, y0 + bh
+        d.rounded_rectangle((x0 + 4, y0 + 6, x1 + 4, y1 + 6), radius=26, fill=(0, 0, 0, 60))
+        d.rounded_rectangle((x0, y0, x1, y1), radius=26, fill=(255, 255, 255, 255))
+        for i, runs in enumerate(line_runs):
+            lw = line_widths[i]
+            lx = x0 + (bw - lw) // 2
+            ly = y0 + pad_y + i * line_h - 2
+            draw_runs(d, runs, lx, ly, f_txt, f_em, (20, 16, 14, 255))
+
+    card_path = work_dir / "card.png"
+    im.save(card_path)
+    return "card.png"
+
+
 def build_ass(words, start, end, hook, style_name, highlight, hook_y, cap_y, template="none") -> str:
     st = STYLES.get(style_name, STYLES["bounce"])
     words = [dict(w, s=w["s"] - CAPTION_LEAD, e=w["e"] - CAPTION_LEAD) for w in words]
@@ -357,9 +515,9 @@ def _filter(layout, fg_h, facecam=None, game_area=None, facecam_pos=None, src_w=
         BOT_H = H - TOP_H
         if fc_box:
             fx, fy, fw, fh = fc_box
-            fc_f = f"[0:v]crop={fw}:{fh}:{fx}:{fy},scale={W}:{TOP_H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{TOP_H},setsar=1[top];"
+            fc_f = f"[0:v]crop={fw}:{fh}:{fx}:{fy},scale={W}:{TOP_H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{TOP_H}:(in_w-{W})/2:0,setsar=1[top];"
         else:
-            fc_f = f"[0:v]scale={W}:{TOP_H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{TOP_H},setsar=1[top];"
+            fc_f = f"[0:v]scale={W}:{TOP_H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{TOP_H}:(in_w-{W})/2:0,setsar=1[top];"
 
         if gm_box:
             gx, gy, gw, gh = gm_box
@@ -433,7 +591,7 @@ def _hook_y(layout, hook_y, facecam=None, facecam_pos=None):
         if py < 900:  # facecam is in upper half of video
             return py + ph + 42
     elif layout == "split":
-        return 720 + 36
+        return 720
     return hook_y
 
 
@@ -454,18 +612,27 @@ def render_clip(src: Path, out_dir: Path, name: str, clip: dict, words: list, sr
     hook_y = _hook_y(layout, hook_y, face, facecam_pos)
     show_title = clip.get("show_title", clip.get("show_hook", True))
     hook_text = (clip.get("hook") or clip.get("title") or "") if show_title else ""
-    ass = build_ass(words if clip.get("captions", True) else [], start, end, hook_text, clip.get("style", "bounce"),
-                    clip.get("highlight_words", []), hook_y, cap_y, template=clip.get("template", "none"))
+    template = clip.get("template", "none")
     work = Path(tempfile.mkdtemp(prefix="pk"))
     try:
+        card_png = None
+        if hook_text and hook_text.strip():
+            try:
+                card_png = _generate_title_card_image(hook_text.strip(), template, hook_y, work)
+            except Exception:
+                card_png = None
+        ass = build_ass(words if clip.get("captions", True) else [], start, end,
+                        "" if card_png else hook_text, clip.get("style", "bounce"),
+                        clip.get("highlight_words", []), hook_y, cap_y, template=template)
         return _render_in(work, src, out_dir, name, start, end, layout, fg_h, ass,
-                          face=face, game_area=game_area, facecam_pos=facecam_pos, src_w=src_w, src_h=src_h)
+                          face=face, game_area=game_area, facecam_pos=facecam_pos,
+                          src_w=src_w, src_h=src_h, card_png=card_png)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
 
 def _render_in(work: Path, src: Path, out_dir: Path, name: str, start, end, layout, fg_h, ass: str,
-               face=None, game_area=None, facecam_pos=None, src_w=1920, src_h=1080) -> dict:
+               face=None, game_area=None, facecam_pos=None, src_w=1920, src_h=1080, card_png=None) -> dict:
     global _qsv_ok
     (work / f"{name}.ass").write_text(ass, encoding="utf-8")
     (work / "f").mkdir()
@@ -495,7 +662,11 @@ def _render_in(work: Path, src: Path, out_dir: Path, name: str, start, end, layo
             mask_file = None
 
     fc = _filter(layout, fg_h, facecam=face, game_area=game_area, facecam_pos=facecam_pos,
-                 src_w=src_w, src_h=src_h, mask_file=mask_file) + f"[v0]ass={name}.ass:fontsdir=f[v]"
+                 src_w=src_w, src_h=src_h, mask_file=mask_file)
+    if card_png and (work / card_png).is_file():
+        fc += f"movie={card_png}[card];[v0][card]overlay=0:0[v_card];[v_card]ass={name}.ass:fontsdir=f[v]"
+    else:
+        fc += f"[v0]ass={name}.ass:fontsdir=f[v]"
     base = ["ffmpeg", "-y", "-v", "error", "-ss", f"{start:.2f}", "-t", f"{end - start:.2f}", "-i", str(src),
             "-filter_complex", fc, "-map", "[v]", "-map", "0:a:0", "-af", "loudnorm=I=-14:TP=-1.5:LRA=11",
             "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-movflags", "+faststart", "-pix_fmt"]
