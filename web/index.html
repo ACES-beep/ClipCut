@@ -3042,6 +3042,7 @@ function initAreaSelector() {
 }
 
 function getActivePlayer(vid, c, j) {
+  const off = (!D.ytPlayer && !D.twPlayer && c && c.src_offset) ? Number(c.src_offset) : 0;
   return {
     getDuration: () => {
       if (D.ytPlayer && typeof D.ytPlayer.getDuration === "function") {
@@ -3053,8 +3054,10 @@ function getActivePlayer(vid, c, j) {
         if (d && !isNaN(d) && d > 0) return d;
       }
       if (D.linked_info && D.linked_info.duration) return D.linked_info.duration;
-      if (vid && vid.duration && !isNaN(vid.duration) && vid.duration > 0) return vid.duration;
       if (j && j.duration && j.duration > 0) return j.duration;
+      if (D.isSource && vid && vid.duration && !isNaN(vid.duration) && vid.duration > 0) return vid.duration;
+      if (c && c.src_end && c.src_end > 0) return c.src_end;
+      if (c && c.end && c.end > 0) return Math.max(c.end + 10, (j && j.duration) || 60);
       return Math.max(60, (c?.end || 30) + 10);
     },
     getCurrentTime: () => {
@@ -3066,7 +3069,7 @@ function getActivePlayer(vid, c, j) {
         const t = D.twPlayer.getCurrentTime();
         if (t != null && !isNaN(t)) return t;
       }
-      if (vid && vid.src && vid.currentTime != null && !isNaN(vid.currentTime)) return vid.currentTime;
+      if (vid && vid.src && vid.currentTime != null && !isNaN(vid.currentTime)) return vid.currentTime + off;
       return D.currentTime != null ? D.currentTime : (c?.start || 0);
     },
     seekTo: (t, allowSeekAhead = true) => {
@@ -3078,7 +3081,7 @@ function getActivePlayer(vid, c, j) {
         try { D.twPlayer.seek(t); } catch {}
       }
       if (vid && vid.src) {
-        try { vid.currentTime = t; } catch {}
+        try { vid.currentTime = Math.max(0, t - off); } catch {}
       }
       const tc = $("#txt_curr_time");
       if (tc) tc.textContent = fmtTime(t);
@@ -3170,11 +3173,20 @@ function initTimelineScrubber(j, c) {
       const dur = getDur();
       const td = $("#txt_dur_time");
       if (td) td.textContent = fmtTime(dur);
-      if (c.start) { try { vid.currentTime = c.start; } catch {} }
-      if (D.isSource && (!Number($("#o_to")?.value))) {
-        c.end = dur;
-      } else if (!c.end || c.end > dur) {
-        c.end = dur;
+      if (D.isSource) {
+        if (c.start) { try { vid.currentTime = c.start; } catch {} }
+        if (!Number($("#o_to")?.value)) {
+          c.end = dur;
+        } else if (!c.end || c.end > dur) {
+          c.end = dur;
+        }
+      } else {
+        if (c.start != null) {
+          try {
+            const off = (!D.ytPlayer && !D.twPlayer && c && c.src_offset) ? Number(c.src_offset) : 0;
+            vid.currentTime = Math.max(0, c.start - off);
+          } catch {}
+        }
       }
       syncUI();
     };
@@ -3698,10 +3710,12 @@ function drawClipDlg(full) {
           initTimelineScrubber(j, c);
           const dur = playerInstance.getDuration ? playerInstance.getDuration() : 0;
           if (dur && dur > 0) {
-            if (isSrc && (!Number($("#o_to")?.value))) {
-              c.end = dur;
-            } else if (!c.end || c.end > dur || c.end <= (c.start || 0)) {
-              c.end = dur;
+            if (isSrc) {
+              if (!Number($("#o_to")?.value)) {
+                c.end = dur;
+              } else if (!c.end || c.end > dur || c.end <= (c.start || 0)) {
+                c.end = dur;
+              }
             }
             const td = $("#txt_dur_time");
             if (td) td.textContent = fmtTime(dur);
@@ -3717,10 +3731,12 @@ function drawClipDlg(full) {
           initTimelineScrubber(j, c);
           const dur = playerInstance.getDuration ? playerInstance.getDuration() : 0;
           if (dur && dur > 0) {
-            if (isSrc && (!Number($("#o_to")?.value))) {
-              c.end = dur;
-            } else if (!c.end || c.end > dur || c.end <= (c.start || 0)) {
-              c.end = dur;
+            if (isSrc) {
+              if (!Number($("#o_to")?.value)) {
+                c.end = dur;
+              } else if (!c.end || c.end > dur || c.end <= (c.start || 0)) {
+                c.end = dur;
+              }
             }
             const td = $("#txt_dur_time");
             if (td) td.textContent = fmtTime(dur);
@@ -4439,6 +4455,18 @@ document.addEventListener("click", async e => {
       });
       if (body.start !== undefined && body.start !== null) body.start = parseTimeToSec(body.start);
       if (body.end !== undefined && body.end !== null) body.end = parseTimeToSec(body.end);
+
+      const j = D.jid ? jobOf(D.jid) : (S.jobs[0] || null);
+      const c = j?.clips?.find(x => x.id === D.cid);
+      if (c) {
+        if (body.start == null || isNaN(body.start) || body.end == null || isNaN(body.end) || (body.end - body.start) < 3) {
+          if (c.start != null && c.end != null && (c.end - c.start) >= 3) {
+            body.start = c.start;
+            body.end = c.end;
+          }
+        }
+      }
+
       if (D.facecam) body.facecam = D.facecam;
       if (D.game_area) body.game_area = D.game_area;
       if (D.facecam_pos) body.facecam_pos = D.facecam_pos;

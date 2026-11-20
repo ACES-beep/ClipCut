@@ -403,7 +403,11 @@ def request_render(jid, cid, changes: dict):
     if not (math.isfinite(new["start"]) and math.isfinite(new["end"])) or new["start"] < 0:
         raise ValueError("Those times aren't valid.")
     if not 3 <= new["end"] - new["start"] <= 180:
-        raise ValueError("A clip can be 3 to 180 seconds long.")
+        if clip.get("start") is not None and clip.get("end") is not None and (3 <= clip["end"] - clip["start"] <= 180):
+            new["start"] = clip["start"]
+            new["end"] = clip["end"]
+        else:
+            raise ValueError("A clip can be 3 to 180 seconds long.")
     for k in ("hook", "title", "description", "style", "layout", "template", "story", "payoff"):
         if k in changes:
             new[k] = str(changes[k])[:{"hook": 80, "title": 100, "description": 2000, "story": 500, "payoff": 500}.get(k, 30)]
