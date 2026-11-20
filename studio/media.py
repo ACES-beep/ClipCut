@@ -376,15 +376,27 @@ def save_thumb(job_dir: Path, url: str = "", video: Path = None) -> bool:
     return False
 
 
-def download_audio(url: str, job_dir: Path, on_progress=None) -> Path:
-    """Audio only: a few seconds even for long videos, and all the AI needs to pick clips."""
+def download_audio(url: str, job_dir: Path, on_progress=None, start: float = None, end: float = None) -> Path:
+    """Audio only: fetches only the requested section (or whole video if no section given)."""
+    from yt_dlp.utils import download_range_func
+
     def hook(d):
         total = d.get("total_bytes") or d.get("total_bytes_estimate")
         if on_progress and d.get("status") == "downloading" and total:
             on_progress(d.get("downloaded_bytes", 0) / total)
 
-    with _youtube_guard(url), _ydl({"format": "ba[ext=m4a]/ba/worst", "outtmpl": str(job_dir / "audio_src.%(ext)s"),
-               "progress_hooks": [hook]}) as ydl:
+    opts = {
+        "format": "ba[ext=m4a]/ba/worst",
+        "outtmpl": str(job_dir / "audio_src.%(ext)s"),
+        "progress_hooks": [hook]
+    }
+    if start is not None or end is not None:
+        s = max(0.0, float(start or 0.0))
+        e = float(end) if (end is not None and float(end) > s) else float("inf")
+        opts["download_ranges"] = download_range_func(None, [(s, e)])
+        opts["force_keyframes_at_cuts"] = True
+
+    with _youtube_guard(url), _ydl(opts) as ydl:
         ydl.download([url])
     return _biggest(job_dir, "audio_src")
 

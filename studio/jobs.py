@@ -551,7 +551,7 @@ def _piece_again(job, clip):
     job.setdefault("height", meta["height"])
 
 
-def _fetch_piece(job, clip, full_audio):
+def _fetch_piece(job, clip, full_audio, audio_offset=0.0):
     """Long videos: download just this clip's stretch and pin down exactly where it starts."""
     d = Path(job["dir"])
     o = job["options"]
@@ -564,7 +564,7 @@ def _fetch_piece(job, clip, full_audio):
         part = media.load_audio(wav)
         wav.unlink(missing_ok=True)
         meta = media.probe(piece)
-        off = media.find_offset(full_audio, part, want)
+        off = media.find_offset(full_audio, part, want - audio_offset) + audio_offset
         clip.update(src=str(piece), src_offset=round(off, 2), src_end=round(off + meta["duration"], 2))
         clip["start"], clip["end"] = max(clip["start"], clip["src_offset"]), min(clip["end"], clip["src_end"])
         job.setdefault("width", meta["width"])
@@ -652,12 +652,18 @@ def _run_job(job):
         if not job.get("thumb") and media.save_thumb(d, url=src["url"]):
             _set(job, thumb=True)
         usage.set_context(job["creator"], meta["title"])
-        span = (o["range_end"] or meta["duration"]) - (o["range_start"] or 0)
-        pieces = span > LONG_VIDEO or meta["duration"] <= 0
-        if not pieces:  # shorter video: fetch all of it in the background while the audio is worked on
+        has_range = bool(o.get("range_start") is not None or o.get("range_end") is not None)
+        r_start = float(o.get("range_start") or 0.0) if has_range else None
+        r_end = float(o.get("range_end")) if (has_range and o.get("range_end") is not None) else None
+        audio_offset = r_start or 0.0
+        span = (r_end or meta["duration"]) - audio_offset
+        pieces = meta["duration"] > LONG_VIDEO or span > LONG_VIDEO or has_range or meta["duration"] <= 0
+        if not pieces:  # shorter video with no range: fetch all of it in the background while the audio is worked on
             video = fetch.submit(media.download, src["url"], d, int(o["quality"]))
-        audio_file = media.download_audio(src["url"], d, lambda p: _set(job, progress=0.03 + 0.1 * p))
+        audio_file = media.download_audio(src["url"], d, lambda p: _set(job, progress=0.03 + 0.1 * p), start=r_start, end=r_end)
     else:
+        has_range = bool(o.get("range_start") is not None or o.get("range_end") is not None)
+        audio_offset = 0.0
         pieces, audio_file = False, Path(src["path"])
         info = media.probe(audio_file)
         if info["duration"] > config.MAX_VIDEO_HOURS * 3600:
@@ -671,12 +677,18 @@ def _run_job(job):
     wav.unlink(missing_ok=True)
     if src["type"] == "url":
         audio_file.unlink(missing_ok=True)
-    if not job["duration"]:
-        job["duration"] = len(audio) / 16000
-    lo = int((o["range_start"] or 0) * 16000)
-    hi = min(len(audio), int(o["range_end"] * 16000)) if o["range_end"] else len(audio)
-    span = (hi - lo) / 16000
-    db = media.loudness_per_second(audio[lo:hi])
+    if not job.get("duration"):
+        job["duration"] = (len(audio) / 16000) + audio_offset
+    if src["type"] == "url":
+        lo = 0
+        hi = len(audio)
+        span = (hi - lo) / 16000
+        db = media.loudness_per_second(audio)
+    else:
+        lo = int((o.get("range_start") or 0) * 16000)
+        hi = min(len(audio), int(o["range_end"] * 16000)) if o.get("range_end") else len(audio)
+        span = (hi - lo) / 16000
+        db = media.loudness_per_second(audio[lo:hi])
 
     vlock, vstate = threading.Lock(), {}
 
@@ -706,17 +718,20 @@ def _run_job(job):
     def make(clip, words_now):
         began[clip["id"]] = time.time()
         if src["type"] == "url" and (pieces or not whole_video()):
-            _fetch_piece(job, clip, audio)
+            _fetch_piece(job, clip, audio, audio_offset=audio_offset)
         if clip["status"] != "error" and clip.get("captions", True) and yt and yt[1].lower().startswith("en"):
             # The clip was found with YouTube's transcript. What is shown on screen comes from our own model,
             # run on just this clip: full punctuation, nothing blanked out, timings to the word.
-            a0, b0 = max(lo, int((clip["start"] - 1.5) * 16000)), min(hi, int((clip["end"] + 1.5) * 16000))
+            rel_s = clip["start"] - audio_offset
+            rel_e = clip["end"] - audio_offset
+            a0 = max(0, int((rel_s - 1.5) * 16000))
+            b0 = min(len(audio), int((rel_e + 1.5) * 16000))
             try:
-                tw = [dict(w, s=round(w["s"] + a0 / 16000, 2), e=round(w["e"] + a0 / 16000, 2)) for w in transcribe.transcribe(audio[a0:b0])]
+                tw = [dict(w, s=round(w["s"] + a0 / 16000 + audio_offset, 2), e=round(w["e"] + a0 / 16000 + audio_offset, 2)) for w in transcribe.transcribe(audio[a0:b0])]
             except Exception:  # noqa: BLE001 - the clip is still made, with YouTube's words
                 tw = []
             if len(tw) >= 3:
-                exact[clip["id"]] = (a0 / 16000, b0 / 16000, tw)
+                exact[clip["id"]] = (a0 / 16000 + audio_offset, b0 / 16000 + audio_offset, tw)
                 words_now = tw
         if clip["status"] != "error":
             render_one(job, clip, words_now)
@@ -734,7 +749,7 @@ def _run_job(job):
             yt = media.youtube_words(src["url"])
         except Exception:  # noqa: BLE001 - no transcript to borrow: ours is written as usual
             yt = None
-        if yt and not _covers(yt[0], lo / 16000, hi / 16000):
+        if yt and not _covers(yt[0], audio_offset + lo / 16000, audio_offset + hi / 16000):
             yt = None
         job["transcript_from"] = "youtube" if yt else "own"
         job["lang"] = yt[1] if yt else ""          # the language spoken, when YouTube says (decides the captions)
@@ -774,7 +789,8 @@ def _run_job(job):
     statics = quality.static_ranges(job.get("source_path") or "") if config.SKIP_STATIC else []
 
     # Fetch engagement signals: Most Replayed heatmap (70% weight), comments & live chat replay
-    smart = media.fetch_smart_signals(job.get("url") or "", span) if job.get("url") else {"was_live": False, "heatmap_peaks": [], "comment_highlights": [], "chat_spikes": []}
+    video_url = src.get("url") or job.get("url") or ""
+    smart = media.fetch_smart_signals(video_url, span) if video_url else {"was_live": False, "heatmap_peaks": [], "comment_highlights": [], "chat_spikes": []}
     job["smart_signals"] = {
         "is_completed_stream": smart["was_live"],
         "heatmap_peaks": len(smart["heatmap_peaks"]),
@@ -791,11 +807,11 @@ def _run_job(job):
     for bi, (a, b) in enumerate(blocks):
         if bi < done_blocks:
             continue                      # transcribed and checked by the AI before the restart
-        shift = a / 16000
+        shift = (a / 16000) + audio_offset
         where = f" (minute {round((a - lo) / 16000 / 60)} of {round(span / 60)})" if len(blocks) > 1 else ""
         if yt:
             _set(job, stage="Reading the transcript" + where)
-            bw = [dict(w, s=round(w["s"] - shift, 2), e=round(w["e"] - shift, 2)) for w in yt[0] if a / 16000 <= w["s"] < b / 16000]
+            bw = [dict(w, s=round(w["s"] - shift, 2), e=round(w["e"] - shift, 2)) for w in yt[0] if shift <= w["s"] < shift + (b - a) / 16000]
         else:
             _set(job, stage="Writing the transcript" + where)
             now_on[0] = bi
