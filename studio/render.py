@@ -257,7 +257,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     groups = _groups(inside, st["per"])
     for gi, g in enumerate(groups):
         g_start = max(0.0, g[0]["s"] - start)
-        g_end = min(g[-1]["e"] + 0.25, groups[gi + 1][0]["s"] if gi + 1 < len(groups) else end) - start
+        nxt_s = max(g_start, (groups[gi + 1][0]["s"] - start) if gi + 1 < len(groups) else dur)
+        # Smart hold duration:
+        # Instead of vanishing 0.25s after speech stops, hold the group caption during natural pauses
+        # for up to 1.5s (or until next group / end of clip), so captions stay visible and don't flicker off into dead void.
+        natural_end = g[-1]["e"] - start
+        g_end = min(max(natural_end + 2.2, g_start + 1.2), nxt_s)
         if g_end - g_start < 0.02:
             continue
         texts = []

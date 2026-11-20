@@ -384,6 +384,9 @@ def request_render(jid, cid, changes: dict):
     for k in ("start", "end"):
         if k in changes:
             new[k] = round(float(changes[k]), 2)
+            new.pop("fixed_words", None)
+            new.pop("fixed_for", None)
+            new.pop("exact_words", None)
     if "src_offset" in clip:  # live clip: can only move inside the saved piece of stream
         new["start"] = max(new["start"], clip["src_offset"])
         new["end"] = min(new["end"], clip["src_end"])
@@ -421,6 +424,21 @@ def render_one(job, clip, words):
         src = Path(clip["src"]) if clip.get("src") else Path(job["source_path"])
         if not clip.get("src"):
             clip["end"] = min(clip["end"], job["duration"])
+        if clip.get("captions", True) and not clip.get("exact_words") and transcribe.model_ready() and src.is_file():
+            try:
+                twav = d / "clips" / f"{clip['id']}_tw.wav"
+                media.extract_audio(src, twav)
+                audio_piece = media.load_audio(twav)
+                twav.unlink(missing_ok=True)
+                if len(audio_piece) >= 16000:
+                    tw = transcribe.transcribe(audio_piece)
+                    if len(tw) >= 3:
+                        clip["exact_words"] = [dict(w, s=round(w["s"] + off, 2), e=round(w["e"] + off, 2)) for w in tw]
+                        words = clip["exact_words"]
+            except Exception:
+                pass
+        elif clip.get("exact_words"):
+            words = clip["exact_words"]
         local = dict(clip, start=clip["start"] - off, end=clip["end"] - off, hook=roman.to_roman(clip.get("hook") or ""))
         near = _caption_words(job, clip, words, off) if clip.get("captions", True) else []
         meta = media.probe(src)
